@@ -34,7 +34,7 @@
     "@types/node": "^26",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "eslint": "9.39.1",
+    "eslint": "10.5.0",
     "eslint-config-next": "16.0.8",
     "firebase-tools": "^15.22.1",
     "tailwindcss": "4.1.11",
