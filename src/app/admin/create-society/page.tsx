@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { createSociety, uploadFile } from '@/lib/firestore';
 import type { SocietyCategory, SocietyPrivacy } from '@/types';
+import { sanitizeImageUrl } from '@/../lib/utils';
 
 export default function CreateSocietyPage() {
   const router = useRouter();
@@ -250,7 +251,7 @@ if (bannerFile) {
                   onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-primary)')}
                 >
                   {logoPreview
-                    ? <img src={logoPreview} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <img src={sanitizeImageUrl(logoPreview)} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}><div style={{ fontSize: 24, marginBottom: 4 }}>🖼️</div>Upload Logo</div>}
                 </div>
                 <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleLogoChange} />
@@ -266,7 +267,7 @@ if (bannerFile) {
                   onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-primary)')}
                 >
                   {bannerPreview
-                    ? <img src={bannerPreview} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ? <img src={sanitizeImageUrl(bannerPreview)} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     : <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}><div style={{ fontSize: 24, marginBottom: 4 }}>🏔️</div>Upload Banner</div>}
                 </div>
                 <input ref={bannerRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleBannerChange} />
