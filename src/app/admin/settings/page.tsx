@@ -6,6 +6,7 @@ import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 
 import { auth } from '@/lib/firebase';
 import { updateUserProfile, uploadFile } from '@/lib/firestore';
 import { useAuth } from '@/contexts/AuthContext';
+import { sanitizeImageUrl } from '@/../lib/utils';
 
 export default function SettingsPage() {
   const { user, userProfile, refreshUserProfile } = useAuth();
@@ -137,7 +138,7 @@ export default function SettingsPage() {
         <div style={{ padding: 18, display: 'flex', alignItems: 'center', gap: 20 }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
             {previewURL ? (
-              <img src={previewURL} alt="Profile" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-primary)' }} />
+              <img src={sanitizeImageUrl(previewURL)} alt="Profile" style={{ width: 80, height: 80, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border-primary)' }} />
             ) : (
               <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, fontWeight: 700, color: '#fff' }}>
                 {initials}
