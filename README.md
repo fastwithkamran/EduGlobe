@@ -6,11 +6,12 @@
 
 ## 🌐 Live App
 
-Visit the site: https://tinyurl.com/eduglobe
+**Visit the site:** https://tinyurl.com/eduglobe
 
-## Demo Video
+## 🎬 Demo Video
 
-<iframe src="https://www.linkedin.com/embed/feed/update/urn:li:ugcPost:7455169552008593409?compact=1" height="399" width="504" frameborder="0" allowfullscreen="" title="Embedded post"></iframe>
+[![▶ Watch Demo on LinkedIn](https://img.shields.io/badge/▶%20Watch%20Demo-LinkedIn-0A66C2?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/feed/update/urn:li:ugcPost:7455169552008593409/)
+
 ---
 
 ## 🚀 Run Locally
