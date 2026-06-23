@@ -1,0 +1,301 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stored at /users/{uid}. Created on first Google sign-in.",
+      "type": "object",
+      "properties": {
+        "uid":            { "type": "string",  "description": "Firebase Auth UID" },
+        "email":          { "type": "string",  "description": "Email from Google Auth" },
+        "displayName":    { "type": "string" },
+        "photoURL":       { "type": "string",  "description": "Nullable — profile picture URL in Firebase Storage" },
+        "role":           { "type": "string",  "description": "viewer | admin | super_admin | null (null = needs onboarding)" },
+        "universityName": { "type": "string",  "description": "Legacy field, kept for compatibility" },
+        "societyId":      { "type": "string",  "description": "Nullable — ID of the society this user owns/admins" },
+        "bio":            { "type": "string" },
+        "contactInfo":    { "type": "string",  "description": "Optional. Shown to society members." },
+        "createdAt":      { "type": "timestamp" },
+        "updatedAt":      { "type": "timestamp" }
+      },
+      "required": ["uid", "email", "displayName"]
+    },
+
+    "Society": {
+      "title": "Society",
+      "description": "Stored at /societies/{societyId}. Created by any authenticated user. Creator auto-becomes owner.",
+      "type": "object",
+      "properties": {
+        "id":            { "type": "string" },
+        "name":          { "type": "string",  "description": "Required" },
+        "organization":  { "type": "string",  "description": "University / company / club name. Replaces old 'university' field." },
+        "city":          { "type": "string",  "description": "Required" },
+        "country":       { "type": "string",  "description": "Required" },
+        "description":   { "type": "string",  "description": "Required" },
+        "category":      { "type": "string",  "description": "educational | professional | technology | cultural | sports | arts | debate | religious | community | entrepreneurship | media | other" },
+        "privacy":       { "type": "string",  "description": "public | private. Public societies appear in global feed." },
+        "logoURL":       { "type": "string",  "description": "Firebase Storage URL. Empty string if not set." },
+        "bannerURL":     { "type": "string",  "description": "Firebase Storage URL. Empty string if not set." },
+        "website":       { "type": "string",  "description": "Optional" },
+        "contactEmail":  { "type": "string",  "description": "Optional. Defaults to creator's email." },
+        "tags":          { "type": "array",   "items": { "type": "string" }, "description": "Discoverability tags" },
+        "memberCount":   { "type": "number",  "description": "Incremented/decremented by Cloud Functions or client writes" },
+        "followerCount": { "type": "number" },
+        "isVerified":    { "type": "boolean", "description": "Set manually by super admin" },
+        "createdBy":     { "type": "string",  "description": "uid of the creator" },
+        "createdByName": { "type": "string" },
+        "createdAt":     { "type": "timestamp" },
+        "updatedAt":     { "type": "timestamp" }
+      },
+      "required": ["name", "city", "country", "description", "category", "privacy", "createdBy"]
+    },
+
+    "SocietyMember": {
+      "title": "Society Member",
+      "description": "Stored at /members/{memberId}. One doc per user-society pair.",
+      "type": "object",
+      "properties": {
+        "id":          { "type": "string" },
+        "userId":      { "type": "string",  "description": "Firebase Auth UID" },
+        "societyId":   { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL":    { "type": "string",  "description": "Nullable" },
+        "role":        { "type": "string",  "description": "owner | admin | moderator | member" },
+        "email":       { "type": "string" },
+        "joinedAt":    { "type": "timestamp" }
+      },
+      "required": ["userId", "societyId", "role", "email"]
+    },
+
+    "MemberInvitation": {
+      "title": "Member Invitation",
+      "description": "Stored at /invitations/{invId}. Pending invitations sent by society admins.",
+      "type": "object",
+      "properties": {
+        "id":              { "type": "string" },
+        "societyId":       { "type": "string" },
+        "societyName":     { "type": "string" },
+        "invitedByUid":    { "type": "string" },
+        "invitedByName":   { "type": "string" },
+        "invitedByEmail":  { "type": "string",  "description": "The logged-in user's email — shown in the invitation" },
+        "invitedEmail":    { "type": "string",  "description": "Recipient email address" },
+        "role":            { "type": "string",  "description": "owner | admin | moderator | member" },
+        "status":          { "type": "string",  "description": "pending | accepted | declined" },
+        "createdAt":       { "type": "timestamp" },
+        "expiresAt":       { "type": "timestamp", "description": "7 days from creation" }
+      },
+      "required": ["societyId", "invitedEmail", "role", "status"]
+    },
+
+    "Post": {
+      "title": "Post",
+      "description": "Stored at /posts/{postId}. Created by society admins. Public posts fan-out notifications to followers.",
+      "type": "object",
+      "properties": {
+        "id":             { "type": "string" },
+        "societyId":      { "type": "string" },
+        "societyName":    { "type": "string" },
+        "societyLogoURL": { "type": "string",  "description": "Nullable — denormalized for feed rendering" },
+        "authorId":       { "type": "string",  "description": "uid" },
+        "authorName":     { "type": "string" },
+        "content":        { "type": "string",  "description": "Required. Post body text." },
+        "type":           { "type": "string",  "description": "announcement | event | achievement | recruitment | general" },
+        "visibility":     { "type": "string",  "description": "public | members_only" },
+        "attachments":    { "type": "array",   "items": { "$ref": "#/entities/PostAttachment" } },
+        "likeCount":      { "type": "number" },
+        "commentCount":   { "type": "number" },
+        "likedBy":        { "type": "array",   "items": { "type": "string" }, "description": "Array of userIds for quick like check" },
+        "createdAt":      { "type": "timestamp" },
+        "updatedAt":      { "type": "timestamp" }
+      },
+      "required": ["societyId", "content", "type", "visibility"]
+    },
+
+    "PostAttachment": {
+      "title": "Post Attachment",
+      "description": "Embedded array inside Post document. Not a separate collection.",
+      "type": "object",
+      "properties": {
+        "id":       { "type": "string" },
+        "fileName": { "type": "string" },
+        "fileURL":  { "type": "string",  "description": "Firebase Storage download URL" },
+        "fileType": { "type": "string",  "description": "MIME type e.g. image/jpeg, application/pdf" },
+        "fileSize": { "type": "number",  "description": "Bytes" }
+      }
+    },
+
+    "PostComment": {
+      "title": "Post Comment",
+      "description": "Stored at /posts/{postId}/comments/{commentId}. Sub-collection of Post.",
+      "type": "object",
+      "properties": {
+        "id":              { "type": "string" },
+        "postId":          { "type": "string" },
+        "authorId":        { "type": "string" },
+        "authorName":      { "type": "string" },
+        "authorPhotoURL":  { "type": "string",  "description": "Nullable" },
+        "content":         { "type": "string" },
+        "createdAt":       { "type": "timestamp" }
+      },
+      "required": ["postId", "authorId", "authorName", "content"]
+    },
+
+    "Follow": {
+      "title": "Follow",
+      "description": "Stored at /follows/{followId} where followId = '{followerId}_{societyId}'. Deterministic ID prevents duplicates.",
+      "type": "object",
+      "properties": {
+        "id":         { "type": "string",     "description": "Format: {followerId}_{societyId}" },
+        "followerId": { "type": "string",     "description": "uid of the user who is following" },
+        "societyId":  { "type": "string" },
+        "createdAt":  { "type": "timestamp" }
+      },
+      "required": ["followerId", "societyId"]
+    },
+
+    "Group": {
+      "title": "Group",
+      "description": "Stored at /groups/{groupId}. Sub-channels inside a society. Created by society admins.",
+      "type": "object",
+      "properties": {
+        "id":             { "type": "string" },
+        "societyId":      { "type": "string" },
+        "name":           { "type": "string" },
+        "description":    { "type": "string" },
+        "type":           { "type": "string",  "description": "general | committee | project | announcement" },
+        "privacy":        { "type": "string",  "description": "public (all society members) | private (invite-only)" },
+        "iconEmoji":      { "type": "string" },
+        "memberIds":      { "type": "array",   "items": { "type": "string" }, "description": "Array of userIds" },
+        "memberCount":    { "type": "number" },
+        "createdBy":      { "type": "string",  "description": "uid" },
+        "createdAt":      { "type": "timestamp" },
+        "lastActivityAt": { "type": "timestamp" },
+        "lastMessage":    { "type": "string",  "description": "Preview of last message. Nullable." }
+      },
+      "required": ["societyId", "name", "type", "privacy", "createdBy"]
+    },
+
+    "Message": {
+      "title": "Message",
+      "description": "Stored at /groups/{groupId}/messages/{messageId}. Sub-collection of Group. Real-time chat.",
+      "type": "object",
+      "properties": {
+        "id":             { "type": "string" },
+        "groupId":        { "type": "string" },
+        "senderId":       { "type": "string",  "description": "uid" },
+        "senderName":     { "type": "string" },
+        "senderPhotoURL": { "type": "string",  "description": "Nullable" },
+        "content":        { "type": "string" },
+        "type":           { "type": "string",  "description": "text | file | system" },
+        "fileURL":        { "type": "string",  "description": "Nullable — only present for file messages" },
+        "fileName":       { "type": "string",  "description": "Nullable" },
+        "fileType":       { "type": "string",  "description": "Nullable — MIME type" },
+        "isPinned":       { "type": "boolean" },
+        "createdAt":      { "type": "timestamp" }
+      },
+      "required": ["groupId", "senderId", "senderName", "content", "type", "isPinned"]
+    },
+
+    "Notification": {
+      "title": "Notification",
+      "description": "Stored at /notifications/{notifId}. Only new_post type is created per current spec — triggered when a followed society publishes a public post.",
+      "type": "object",
+      "properties": {
+        "id":                { "type": "string" },
+        "userId":            { "type": "string",  "description": "Recipient uid" },
+        "type":              { "type": "string",  "description": "new_post | post_like | post_comment | society_followed | system. Currently only new_post is generated." },
+        "title":             { "type": "string",  "description": "e.g. 'New post from NUST Computing Society'" },
+        "message":           { "type": "string",  "description": "First 80 chars of post content" },
+        "isRead":            { "type": "boolean" },
+        "relatedPostId":     { "type": "string",  "description": "Nullable — for deep linking" },
+        "relatedSocietyId":  { "type": "string",  "description": "Nullable" },
+        "relatedUserId":     { "type": "string",  "description": "Nullable" },
+        "createdAt":         { "type": "timestamp" }
+      },
+      "required": ["userId", "type", "title", "message", "isRead"]
+    }
+  },
+
+  "firestore": {
+    "/users/{uid}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "User profiles. One document per Firebase Auth user.",
+      "indexes": []
+    },
+    "/societies/{societyId}": {
+      "schema": { "$ref": "#/entities/Society" },
+      "description": "Society documents. Public societies readable without auth.",
+      "indexes": [
+        { "fields": ["privacy", "createdAt DESC"], "note": "Global public society list" }
+      ]
+    },
+    "/members/{memberId}": {
+      "schema": { "$ref": "#/entities/SocietyMember" },
+      "description": "One doc per user-society membership.",
+      "indexes": [
+        { "fields": ["societyId", "joinedAt ASC"], "note": "Members list for a society" }
+      ]
+    },
+    "/invitations/{invId}": {
+      "schema": { "$ref": "#/entities/MemberInvitation" },
+      "description": "Pending invitations. Status: pending | accepted | declined.",
+      "indexes": [
+        { "fields": ["societyId", "status"], "note": "Pending invitations for a society" }
+      ]
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Society posts. Public posts visible to all; members_only requires auth.",
+      "indexes": [
+        { "fields": ["visibility", "createdAt DESC"],           "note": "Global public feed" },
+        { "fields": ["societyId", "createdAt DESC"],            "note": "Society-specific feed" },
+        { "fields": ["societyId", "visibility", "createdAt DESC"], "note": "Following feed (in+visibility)" }
+      ]
+    },
+    "/posts/{postId}/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/PostComment" },
+      "description": "Comments sub-collection. Ordered by createdAt ASC for display.",
+      "indexes": []
+    },
+    "/follows/{followId}": {
+      "schema": { "$ref": "#/entities/Follow" },
+      "description": "Follow relationships. Document ID is '{followerId}_{societyId}' to prevent duplicates.",
+      "indexes": [
+        { "fields": ["followerId"],           "note": "All societies a user follows" },
+        { "fields": ["societyId"],            "note": "All followers of a society (for notification fan-out)" }
+      ]
+    },
+    "/groups/{groupId}": {
+      "schema": { "$ref": "#/entities/Group" },
+      "description": "Groups are sub-channels inside a society. Embedded inside Society page.",
+      "indexes": [
+        { "fields": ["societyId", "lastActivityAt DESC"], "note": "Groups list for a society" }
+      ]
+    },
+    "/groups/{groupId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Real-time chat messages. Ordered DESC with limit, reversed for display.",
+      "indexes": []
+    },
+    "/notifications/{notifId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "User notifications. Only new_post type is auto-generated. Filtered client-side to new_post.",
+      "indexes": [
+        { "fields": ["userId", "createdAt DESC"],     "note": "All notifications for a user" },
+        { "fields": ["userId", "isRead ASC"],         "note": "Unread count / mark all read" }
+      ]
+    }
+  },
+
+  "storage": {
+    "avatars/{uid}/":       { "description": "Profile pictures. Max 5MB. Image only. Owner-write, public-read." },
+    "posts/{societyId}/":   { "description": "Post attachments (images, PDFs, docs). Max 20MB. Auth-write, public-read." },
+    "societies/{societyId}/": { "description": "Society logos and banners. Max 10MB. Admin-write, public-read." }
+  },
+
+  "notes": {
+    "society_schema_change": "The 'university' field in the old blueprint has been replaced with 'organization' (can be a university, company, or club). 'city' and 'country' are now separate required fields.",
+    "notification_scope": "Per product spec, only 'new_post' notifications are auto-generated (fan-out on createPost). Other types exist in the type definition for future use.",
+    "member_create_chicken_egg": "When creating a society, the creator has no societyId yet, so isAdminOfSociety() fails. The members rule allows create if role == 'owner' to handle this bootstrap case.",
+    "following_feed_limit": "subscribeToFollowingFeed uses a Firestore 'in' query limited to 30 societyIds. Users following more than 30 societies will see only the first 30."
+  }
+}
