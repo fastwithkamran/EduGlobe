@@ -1,12 +1,20 @@
 # EduGlobe 🌍
 
-**EduGlobe** is a global discovery platform that connects students worldwide with posts, updates, and knowledge from universities, institutions, organisations, NGOs, research bodies, and individual scholars.
+**EduGlobe** is a global discovery platform designed to connect students with a world of academic knowledge, opportunities, and insights.
+
+Think of it as a personalized global feed for students, where they can:
+
+* Discover content from a diverse range of sources: This includes universities, research institutions, organizations, NGOs, and individual scholars from around the globe.
+* Follow what matters to them: Students can subscribe to pages and topics that align with their academic interests and career aspirations.
+* Stay updated on key information: The platform delivers posts, updates, events, opportunities (like scholarships and internships), and valuable insights directly to their feed.
+
+In essence, EduGlobe aims to democratize access to academic information and foster a global community of learners.
 
 ---
 
 ## 🌐 Live App
 
-**Visit the site:** https://tinyurl.com/eduglobe
+**Visit the site:** <https://tinyurl.com/eduglobe>
 
 ## 🎬 Demo Video
 
@@ -17,10 +25,13 @@
 ## 🚀 Run Locally
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) v18+
-- A [Gemini API Key](https://aistudio.google.com/apikey)
+
+* [Node.js](https://nodejs.org/) v18+
+
+* A [Gemini API Key](https://aistudio.google.com/apikey)
 
 ### 1. Install Dependencies
+
 ```bash
 npm install
 ```
@@ -41,6 +52,7 @@ Then open `.env.local` and set:
 | `APP_URL` | `http://localhost:3000` for local dev |
 
 ### 3. Run the Dev Server
+
 ```bash
 npm run dev
 ```
@@ -52,9 +64,10 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 ## 🔥 Firebase
 
 This project uses Firebase for:
-- **Auth** — Google Sign-In
-- **Firestore** — Database
-- **Storage** — File uploads
+
+* **Auth** — Google Sign-In
+* **Firestore** — Database
+* **Storage** — File uploads
 
 The Firebase project config is in [`firebase-applet-config.json`](./firebase-applet-config.json) and is already wired up — no changes needed for local dev.
 
@@ -112,4 +125,4 @@ EduGlobe/
 
 ---
 
-*Built for the AI Seekho 2026, a nationwide upskilling initiative launched by Google for Developers in collaboration with the Pakistani Ministry of IT & Telecom, Telenor Pakistan, and Innovista, built in AI Studio*
+*Built for the AI Seekho 2026, a nationwide upskilling initiative launched by Google for Developers in collaboration with the Pakistani Ministry of IT & Telecom, Telenor Pakistan, and Innovista, built in AI Studio.*
