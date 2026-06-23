@@ -10,6 +10,7 @@ import {
   deletePost,
 } from '@/lib/firestore';
 import type { Post, PostComment, PostType } from '@/types';
+import { sanitizeImageUrl } from '@/../lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,7 +96,7 @@ function CommentThread({ postId }: { postId: string }) {
       {comments.map(c => (
         <div key={c.id} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
           <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
-            {c.authorPhotoURL ? <img src={c.authorPhotoURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : getInitials(c.authorName)}
+            {c.authorPhotoURL ? <img src={sanitizeImageUrl(c.authorPhotoURL)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : getInitials(c.authorName)}
           </div>
           <div style={{ background: 'var(--bg-tertiary)', borderRadius: '0 12px 12px 12px', padding: '8px 12px', flex: 1 }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{c.authorName}</div>
@@ -179,7 +180,7 @@ function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdm
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, paddingRight: isSuperAdmin ? 44 : 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', overflow: 'hidden', flexShrink: 0 }}>
-              {post.societyLogoURL ? <img src={post.societyLogoURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : getInitials(post.societyName)}
+              {post.societyLogoURL ? <img src={sanitizeImageUrl(post.societyLogoURL)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : getInitials(post.societyName)}
             </div>
             <div>
               <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{post.societyName}</div>
@@ -204,11 +205,11 @@ function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdm
             {post.attachments.map(att => {
               const isImg = att.fileType.startsWith('image/');
               return isImg ? (
-                <a key={att.id} href={att.fileURL} target="_blank" rel="noreferrer" style={{ borderRadius: 8, overflow: 'hidden', display: 'block', maxWidth: 280, border: '1px solid var(--border-primary)' }}>
-                  <img src={att.fileURL} alt={att.fileName} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                <a key={att.id} href={sanitizeImageUrl(att.fileURL)} target="_blank" rel="noreferrer" style={{ borderRadius: 8, overflow: 'hidden', display: 'block', maxWidth: 280, border: '1px solid var(--border-primary)' }}>
+                  <img src={sanitizeImageUrl(att.fileURL)} alt={att.fileName} style={{ width: '100%', height: 'auto', display: 'block' }} />
                 </a>
               ) : (
-                <a key={att.id} href={att.fileURL} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: 8, textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 12 }}>
+                <a key={att.id} href={sanitizeImageUrl(att.fileURL)} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: 8, textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 12 }}>
                   📎 {att.fileName}
                 </a>
               );
