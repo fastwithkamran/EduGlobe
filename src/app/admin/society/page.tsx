@@ -12,6 +12,7 @@ import {
 import type {
   Society, Post, PostComment, PostAttachment, PostType,
 } from '@/types';
+import { sanitizeImageUrl } from '@/../lib/utils';
  
 // ─── Helpers ──────────────────────────────────────────────────────────────────
  
@@ -89,7 +90,7 @@ function CommentThread({ postId }: { postId: string }) {
             fontSize: 9, fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden',
           }}>
             {c.authorPhotoURL
-              ? <img src={c.authorPhotoURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+              ? <img src={sanitizeImageUrl(c.authorPhotoURL)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
               : getInitials(c.authorName)}
           </div>
           <div style={{ background: 'var(--bg-tertiary)', borderRadius: '0 10px 10px 10px', padding: '7px 11px', flex: 1 }}>
@@ -334,12 +335,12 @@ function SocietyPostCard({ post, currentUserId, isAdmin, isSuperAdmin }: {
           {post.attachments.map(att => {
             const isImg = att.fileType.startsWith('image/');
             return isImg ? (
-              <a key={att.id} href={att.fileURL} target="_blank" rel="noreferrer"
+              <a key={att.id} href={sanitizeImageUrl(att.fileURL)} target="_blank" rel="noreferrer"
                 style={{ borderRadius: 8, overflow: 'hidden', display: 'block', maxWidth: 240, border: '1px solid var(--border-primary)' }}>
-                <img src={att.fileURL} alt={att.fileName} style={{ width: '100%', height: 'auto', display: 'block' }} />
+                <img src={sanitizeImageUrl(att.fileURL)} alt={att.fileName} style={{ width: '100%', height: 'auto', display: 'block' }} />
               </a>
             ) : (
-              <a key={att.id} href={att.fileURL} target="_blank" rel="noreferrer"
+              <a key={att.id} href={sanitizeImageUrl(att.fileURL)} target="_blank" rel="noreferrer"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: 8, textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 12 }}>
                 📎 {att.fileName}
               </a>
@@ -443,7 +444,7 @@ export default function SocietyPage() {
       <div style={{
         position: 'relative', height: 160, flexShrink: 0,
         background: society.bannerURL
-          ? `url(${society.bannerURL}) center/cover`
+          ? `url(${sanitizeImageUrl(society.bannerURL)}) center/cover`
           : 'var(--gradient-hero)',
       }}>
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to bottom, transparent 40%, rgba(6,11,24,0.9))' }} />
@@ -456,7 +457,7 @@ export default function SocietyPage() {
             border: '3px solid rgba(255,255,255,0.1)', flexShrink: 0,
           }}>
             {society.logoURL
-              ? <img src={society.logoURL} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
+              ? <img src={sanitizeImageUrl(society.logoURL)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" />
               : CATEGORY_EMOJI[society.category] ?? '🌐'}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
