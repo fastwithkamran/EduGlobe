@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToNotifications } from '@/lib/firestore';
 import type { Notification } from '@/types';
 import { useIsMobile } from '../../../hooks/use-mobile'; // Use relative because hooks is outside src
+import { sanitizeImageUrl } from '@/../lib/utils';
 
 // ─── Navigation Structure ─────────────────────────────────────────────────────
 const NAV_ITEMS = [
@@ -222,7 +223,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <div style={{ padding: 12, borderTop: '1px solid var(--border-primary)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
               {userProfile?.photoURL ? (
-                <img src={userProfile.photoURL} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                <img src={sanitizeImageUrl(userProfile.photoURL)} alt="avatar" style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
               ) : (
                 <div style={{
                   width: 32, height: 32, borderRadius: '50%',
