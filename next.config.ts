@@ -22,6 +22,9 @@ const nextConfig: NextConfig = {
     ],
   },
   transpilePackages: ['motion'],
+  // Next.js 16 enables Turbopack by default. An empty turbopack config is
+  // required to avoid a build error when a webpack config is also present.
+  turbopack: {},
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.
     // Do not modify file watching is disabled to prevent flickering during agent edits.
