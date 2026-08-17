@@ -14,7 +14,7 @@ In essence, EduGlobe aims to democratize access to academic information and fost
 
 ## 🌐 Live App
 
-**Visit the site:** <https://tinyurl.com/eduglobe>
+**Visit the site:** <https://edu-globe-fastwithkamran.vercel.app>
 
 ## 🎬 Demo Video
 
@@ -22,42 +22,26 @@ In essence, EduGlobe aims to democratize access to academic information and fost
 
 ---
 
-## 🚀 Run Locally
+<table>
+<tr>
+<td valign="top" width="55%">
 
-### Prerequisites
+### Google Swags — AI Seekho 2026
 
-* [Node.js](https://nodejs.org/) v18+
+Awarded by **Google for Developers** in collaboration with Pakistan's Ministry of IT & Telecom, Telenor Pakistan & Innovista — a **nationwide AI upskilling competition**.
 
-* A [Gemini API Key](https://aistudio.google.com/apikey)
+Recognized for building **[EduGlobe](https://edu-globe-fastwithkamran.vercel.app)** — a global academic discovery platform with a Gemini-powered AI assistant.
 
-### 1. Install Dependencies
+</td>
+<td valign="top" width="45%" align="center">
 
-```bash
-npm install
-```
+<img src="https://res.cloudinary.com/hodumcas/image/upload/v1786808023/Google_Swags_xdmkfa.jpg" width="235" alt="Google AI Seekho 2026 Swag" />
 
-### 2. Configure Environment Variables
+*Google AI Seekho 2026 Swag*
 
-Copy `.env.example` to `.env.local` and fill in your values:
-
-```bash
-copy .env.example .env.local
-```
-
-Then open `.env.local` and set:
-
-| Variable | Description |
-|---|---|
-| `EDU_AI_KEY` | Your Gemini API key from [AI Studio](https://aistudio.google.com/apikey) |
-| `APP_URL` | `http://localhost:3000` for local dev |
-
-### 3. Run the Dev Server
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+</td>
+</tr>
+</table>
 
 ---
 
@@ -114,10 +98,49 @@ EduGlobe/
 
 ---
 
+## 🚀 Run Locally
+
+### Prerequisites
+
+* [Node.js](https://nodejs.org/) v18+
+
+* A [Gemini API Key](https://aistudio.google.com/apikey)
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Configure Environment Variables
+
+Copy `.env.example` to `.env.local` and fill in your values:
+
+```bash
+copy .env.example .env.local
+```
+
+Then open `.env.local` and set:
+
+| Variable | Description |
+| --- | --- |
+| `EDU_AI_KEY` | Your Gemini API key from [AI Studio](https://aistudio.google.com/apikey) |
+| `APP_URL` | `http://localhost:3000` for local dev |
+
+### 3. Run the Dev Server
+
+```bash
+npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
 ## 🛠️ Available Scripts
 
 | Command | Description |
-|---|---|
+| --- | --- |
 | `npm run dev` | Start local development server |
 | `npm run build` | Build production bundle |
 | `npm run start` | Start production server |
