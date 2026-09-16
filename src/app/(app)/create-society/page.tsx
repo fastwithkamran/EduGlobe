@@ -126,7 +126,7 @@ if (bannerFile) {
       await refreshUserProfile();
 
       toast.success(`🎉 "${form.name}" is live!`);
-      router.push('/admin/society');
+      router.push('/society');
     } catch (err) {
       console.error(err);
       toast.error('Failed to create society. Please try again.');

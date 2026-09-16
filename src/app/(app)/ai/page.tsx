@@ -29,7 +29,7 @@ function renderContent(text: string) {
 }
 
 export default function AIPage() {
-  const { userProfile } = useAuth();
+  const { user, userProfile, loginWithGoogle } = useAuth();
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: 'welcome',
@@ -42,6 +42,25 @@ export default function AIPage() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // ─── Guest gate ────────────────────────────────────────────────────────────
+  if (!user) {
+    return (
+      <div style={{ padding: 'var(--page-padding-y) var(--page-padding-x)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
+        <div style={{ fontSize: 52, marginBottom: 16 }}>🤖</div>
+        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, marginBottom: 8 }}>AI Assistant</h2>
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 14, marginBottom: 24, maxWidth: 300, lineHeight: 1.6 }}>
+          Sign in to access the EduGlobe AI Assistant powered by Google Gemini.
+        </p>
+        <button
+          onClick={() => loginWithGoogle().catch(() => {})}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 24px', background: 'var(--gradient-primary)', color: '#fff', border: 'none', borderRadius: 12, fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14, cursor: 'pointer', boxShadow: '0 0 20px rgba(16,185,129,0.25)' }}
+        >
+          🔐 Sign in with Google
+        </button>
+      </div>
+    );
+  }
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();

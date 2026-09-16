@@ -419,7 +419,7 @@ export default function SocietyPage() {
         <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 24 }}>
           You haven't created an Academy. Create one to get started!
         </p>
-        <button className="btn btn-primary" onClick={() => router.push('/admin/create-society')}>
+        <button className="btn btn-primary" onClick={() => router.push('/create-society')}>
           + Start a Education Hub
         </button>
       </div>

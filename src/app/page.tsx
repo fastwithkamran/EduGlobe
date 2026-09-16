@@ -11,7 +11,7 @@ export default function LoginPage() {
  
   useEffect(() => {
     if (user && !loading) {
-      router.push('/admin/feed');
+      router.push('/feed');
     }
   }, [user, loading, router]);
  
@@ -123,6 +123,39 @@ export default function LoginPage() {
           </svg>
           Sign In with Google
         </button>
+
+        {/* Browse as Guest */}
+        <button
+          onClick={() => router.push('/feed')}
+          style={{
+            width: '100%',
+            marginTop: 12,
+            padding: '11px 20px',
+            background: 'transparent',
+            color: 'var(--text-tertiary)',
+            border: '1px solid var(--border-primary)',
+            borderRadius: 10,
+            fontFamily: 'var(--font-body)',
+            fontWeight: 500,
+            fontSize: 14,
+            cursor: 'pointer',
+            transition: 'all .2s',
+          }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-secondary)';
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.15)';
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLButtonElement).style.color = 'var(--text-tertiary)';
+            (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border-primary)';
+          }}
+        >
+          👀 Browse as Guest →
+        </button>
+
+        <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 14, lineHeight: 1.5 }}>
+          Sign in to like, comment, and post.
+        </p>
       </div>
     </div>
   );

@@ -79,7 +79,7 @@ export default function NotificationsPage() {
         <span style={{ fontSize: 14, flexShrink: 0 }}>ℹ️</span>
         <span>
           You receive notifications only when a institute you <strong style={{ color: 'var(--primary-400)' }}>follow</strong> publishes a new post.
-          Follow institutes in the <a href="/admin/feed" style={{ color: 'var(--primary-400)' }}>Global Feed</a> to start receiving updates.
+          Follow institutes in the <a href="/feed" style={{ color: 'var(--primary-400)' }}>Global Feed</a> to start receiving updates.
         </span>
       </div>
 
@@ -93,7 +93,7 @@ export default function NotificationsPage() {
             <p style={{ fontSize: 13 }}>
               Follow institutes in the Global Feed — you'll be notified whenever they post.
             </p>
-            <a href="/admin/feed" className="btn btn-primary btn-sm" style={{ marginTop: 16, display: 'inline-flex' }}>
+            <a href="/feed" className="btn btn-primary btn-sm" style={{ marginTop: 16, display: 'inline-flex' }}>
               🌐 Go to Global Feed
             </a>
           </div>

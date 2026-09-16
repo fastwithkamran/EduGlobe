@@ -126,7 +126,7 @@ export default function SocietiesAdminPage() {
   // Redirect non-admins
   useEffect(() => {
     if (!authLoading && !isSuperAdmin) {
-      router.push('/admin/feed');
+      router.push('/feed');
     }
   }, [authLoading, isSuperAdmin, router]);
 
