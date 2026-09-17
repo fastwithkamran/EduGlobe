@@ -124,19 +124,32 @@ function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdm
   isSuperAdmin: boolean;
 }) {
   const [showComments, setShowComments] = useState(false);
-  const [liking, setLiking] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const isLiked = currentUserId ? post.likedBy.includes(currentUserId) : false;
+  // Optimistic like state — null = use server data
+  const [localLiked, setLocalLiked] = useState<boolean | null>(null);
+  const [localCount, setLocalCount] = useState<number | null>(null);
+
+  const serverLiked = currentUserId ? post.likedBy.includes(currentUserId) : false;
+  const isLiked   = localLiked !== null ? localLiked : serverLiked;
+  const likeCount = localCount !== null ? localCount : post.likeCount;
   const isFollowing = followedIds.has(post.societyId);
 
   const handleLike = async () => {
     if (!currentUserId) return toast.error('Sign in to like posts');
-    setLiking(true);
-    try { await togglePostLike(post.id, currentUserId, !isLiked); }
-    catch { toast.error('Failed'); }
-    finally { setLiking(false); }
+    const wasLiked  = isLiked;
+    const prevCount = likeCount;
+    // Instant optimistic flip
+    setLocalLiked(!wasLiked);
+    setLocalCount(prevCount + (wasLiked ? -1 : 1));
+    try {
+      await togglePostLike(post.id, currentUserId, !wasLiked);
+      setLocalLiked(null); setLocalCount(null); // server now owns state
+    } catch {
+      setLocalLiked(wasLiked); setLocalCount(prevCount); // revert
+      toast.error('Failed to like post');
+    }
   };
 
   const handleFollow = async () => {
@@ -219,8 +232,8 @@ function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdm
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 8, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-secondary)' }}>
-          <button onClick={handleLike} disabled={liking} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: isLiked ? '#ef4444' : 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px', borderRadius: 8, transition: 'all .15s' }}>
-            {isLiked ? '♥' : '♡'} {post.likeCount}
+          <button onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: isLiked ? '#ef4444' : 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px', borderRadius: 8, transition: 'all .15s', transform: isLiked ? 'scale(1.08)' : 'scale(1)' }}>
+            {isLiked ? '♥' : '♡'} {likeCount}
           </button>
           <button onClick={() => setShowComments(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: showComments ? 'var(--primary-400)' : 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px', borderRadius: 8, transition: 'all .15s' }}>
             💬 {post.commentCount}
@@ -349,18 +362,46 @@ export default function GlobalFeedPage() {
 
       <div style={{ padding: '20px var(--page-padding-x)', flex: 1, overflowY: 'auto' }}>
         {isLoading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>Loading feed…</div>
+          // ── Skeleton cards ──────────────────────────────────────────────────
+          <div>
+            {[1, 2, 3].map(i => (
+              <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-xl)', padding: 20, marginBottom: 14 }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
+                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-tertiary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ height: 12, width: '40%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                    <div style={{ height: 10, width: '25%', background: 'var(--bg-tertiary)', borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                  </div>
+                </div>
+                <div style={{ height: 12, background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                <div style={{ height: 12, width: '80%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
+                <div style={{ height: 12, width: '60%', background: 'var(--bg-tertiary)', borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
+              </div>
+            ))}
+          </div>
         ) : currentPosts.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-tertiary)' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>{tab === 'following' ? '🔔' : '📭'}</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
-              {tab === 'following' ? 'No posts from followed institutes' : 'No posts yet'}
+          // ── Enhanced empty state ────────────────────────────────────────────
+          <div style={{ textAlign: 'center', padding: '80px 24px' }}>
+            <div style={{ fontSize: 52, marginBottom: 16, filter: 'grayscale(0.2)' }}>
+              {tab === 'following' ? '🔔' : '📭'}
             </div>
-            <p style={{ fontSize: 13 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8, fontFamily: 'var(--font-heading)' }}>
+              {tab === 'following' ? 'Your feed is quiet' : 'No posts yet'}
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', maxWidth: 320, margin: '0 auto 24px', lineHeight: 1.7 }}>
               {tab === 'following'
-                ? 'Click "+ Follow" on any post in the All Posts tab to follow institutes.'
-                : 'Institutes will start posting soon.'}
+                ? 'Follow institutes from the All Posts tab to see their updates here.'
+                : 'Institutes haven\'t posted yet. Check back soon or explore societies.'}
             </p>
+            {tab === 'following' ? (
+              <button className="btn btn-primary btn-sm" onClick={() => setTab('all')}>
+                🌐 Browse All Posts
+              </button>
+            ) : (
+              <a href="/societies" className="btn btn-outline btn-sm">
+                🏛️ Explore Institutes
+              </a>
+            )}
           </div>
         ) : (
           currentPosts.map(post => (

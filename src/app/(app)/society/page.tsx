@@ -134,8 +134,11 @@ function PostComposer({ society, authorId, authorName }: {
   const fileRef = useRef<HTMLInputElement>(null);
   const selectedLabel = POST_TYPE_OPTIONS.find(o => o.value === type)?.label ?? type;
  
+  const MAX_CHARS = 500;
+
   const publish = async () => {
     if (!content.trim()) return toast.error('Post content is required');
+    if (content.length > MAX_CHARS) return toast.error(`Post exceeds ${MAX_CHARS} character limit`);
     setUploading(true);
     try {
       const attachments: PostAttachment[] = [];
@@ -171,8 +174,14 @@ function PostComposer({ society, authorId, authorName }: {
         placeholder={`Share something with ${society.name}…`}
         value={content}
         onChange={e => setContent(e.target.value)}
-        style={{ width: '100%', resize: 'vertical', marginBottom: 12 }}
+        style={{ width: '100%', resize: 'vertical', marginBottom: 4 }}
       />
+      {/* Character counter */}
+      <div style={{ textAlign: 'right', fontSize: 11, marginBottom: 10,
+        color: content.length > MAX_CHARS ? '#ef4444' : content.length > MAX_CHARS * 0.8 ? '#f59e0b' : 'var(--text-muted)'
+      }}>
+        {content.length} / {MAX_CHARS}
+      </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
         <div>
           <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Post Type</div>
@@ -244,7 +253,7 @@ function PostComposer({ society, authorId, authorName }: {
         <button
           className="btn btn-primary btn-sm"
           onClick={publish}
-          disabled={uploading || !content.trim()}
+          disabled={uploading || !content.trim() || content.length > MAX_CHARS}
           style={{ marginLeft: 'auto' }}
         >
           {uploading ? `${progress}%` : '📤 Publish'}
