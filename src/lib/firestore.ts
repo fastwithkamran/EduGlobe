@@ -11,11 +11,7 @@ import {
   increment, type QuerySnapshot, type Unsubscribe,
   startAfter, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
-import {
-  ref, uploadBytesResumable, getDownloadURL, deleteObject,
-  type UploadTaskSnapshot,
-} from 'firebase/storage';
-import { db, storage } from './firebase';
+import { db } from './firebase';
 import type {
   UserProfile, Society, SocietyMember, Post, PostComment,
   Group, Message, Notification, MemberInvitation, Follow,
@@ -44,29 +40,88 @@ function fromDoc<T>(snap: { id: string; data: () => Record<string, unknown> }): 
   return { id: snap.id, ...convert(data) } as T;
 }
 
-// ─── File Upload ──────────────────────────────────────────────────────────────
+// ─── File Upload (Cloudinary — unsigned preset) ───────────────────────────────
+//
+// Uses XMLHttpRequest instead of fetch so we get real upload-progress events.
+// Calling code is unchanged: uploadFile(file, path, onProgress?) → URL
+// The `path` arg is kept for API compat; we extract the first segment as folder.
 
 export async function uploadFile(
   file: File,
   path: string,
   onProgress?: (pct: number) => void,
 ): Promise<string> {
-  const storageRef = ref(storage, path);
-  const task = uploadBytesResumable(storageRef, file);
-  return new Promise((resolve, reject) => {
-    task.on(
-      'state_changed',
-      (snap: UploadTaskSnapshot) => {
-        if (onProgress) onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
-      },
-      reject,
-      async () => resolve(await getDownloadURL(task.snapshot.ref)),
-    );
+  const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+  const preset   = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+  if (!cloudName || !preset) {
+    throw new Error('Cloudinary env vars not set (NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME / NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET)');
+  }
+
+  // Use first path segment as folder (e.g. 'societies', 'avatars', 'posts')
+  const folder = path.split('/')[0] || 'eduglobe';
+
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', preset);
+  formData.append('folder', folder);
+
+  return new Promise<string>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`);
+
+    if (onProgress) {
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100));
+      });
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        try {
+          const data = JSON.parse(xhr.responseText) as { secure_url: string };
+          resolve(data.secure_url);
+        } catch {
+          reject(new Error('Invalid Cloudinary response'));
+        }
+      } else {
+        reject(new Error(`Upload failed: ${xhr.status} ${xhr.responseText}`));
+      }
+    };
+
+    xhr.onerror  = () => reject(new Error('Upload failed — network error'));
+    xhr.onabort  = () => reject(new Error('Upload cancelled'));
+    xhr.send(formData);
   });
 }
 
+// ─── File Delete (Cloudinary — server-side API route) ─────────────────────────
+//
+// Extracts the Cloudinary public_id from the URL and calls our
+// /api/cloudinary/delete route (which holds the API secret server-side).
+// Silently no-ops on empty or non-Cloudinary URLs.
+
 export async function deleteFile(url: string): Promise<void> {
-  await deleteObject(ref(storage, url));
+  if (!url || !url.includes('cloudinary.com')) return;
+
+  // Extract public_id from URL:
+  // https://res.cloudinary.com/{cloud}/image/upload/v{version}/{public_id}.{ext}
+  // public_id may contain slashes (folder path), so we grab everything after
+  // /upload/ (skipping the optional v{digits}/ version segment).
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^./]+)?$/);
+  if (!match || !match[1]) return;
+  const publicId = match[1];
+
+  try {
+    await fetch('/api/cloudinary/delete', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ publicId }),
+    });
+  } catch (err) {
+    // Best-effort: log but don't block the caller
+    console.warn('[deleteFile] Cloudinary delete skipped:', err);
+  }
 }
 
 // ─── User Profiles ────────────────────────────────────────────────────────────

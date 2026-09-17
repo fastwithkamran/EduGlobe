@@ -14,10 +14,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'picsum.photos',
         port: '',
-        pathname: '/**', // This allows any path under the hostname
+        pathname: '/**',
       },
-      { protocol: 'https', hostname: 'firebasestorage.googleapis.com' },
-      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
+      { protocol: 'https', hostname: 'res.cloudinary.com' },    // Cloudinary images
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' }, // Google profile photos
     ],
   },
   transpilePackages: ['motion'],
