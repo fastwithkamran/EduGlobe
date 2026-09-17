@@ -148,6 +148,39 @@
   --page-padding-y: 24px;
 }
 
+/* ─── Light Theme ────────────────────────────────────────────────────────────
+   Applied when <html data-theme="light"> is set.
+   Primary / accent / status colours stay the same — only surfaces & text flip.
+   ─────────────────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  --bg-primary:    #f0f4f8;
+  --bg-secondary:  #e8edf3;
+  --bg-tertiary:   #dde3ec;
+  --bg-card:       #ffffff;
+  --bg-card-hover: #f5f8fc;
+  --bg-glass:      rgba(240, 244, 248, 0.88);
+  --bg-glass-light: rgba(0, 0, 0, 0.03);
+  --bg-input:      rgba(0, 0, 0, 0.05);
+  --bg-input-focus: rgba(0, 0, 0, 0.08);
+
+  --text-primary:   #0f172a;
+  --text-secondary: #334155;
+  --text-tertiary:  #64748b;
+  --text-muted:     #94a3b8;
+
+  --border-primary:   rgba(0, 0, 0, 0.09);
+  --border-secondary: rgba(0, 0, 0, 0.05);
+  --border-focus:     rgba(16, 185, 129, 0.45);
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.07);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.07), 0 4px 6px rgba(0, 0, 0, 0.04);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.07), 0 8px 10px rgba(0, 0, 0, 0.04);
+
+  --gradient-hero: linear-gradient(135deg, #f0f4f8 0%, #e8fdf2 50%, #f0fdf4 100%);
+  --gradient-card: linear-gradient(145deg, rgba(0,0,0,0.015) 0%, rgba(0,0,0,0.005) 100%);
+}
+
 /* --- Reset & Base --- */
 *,
 *::before,

@@ -33,6 +33,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap"
           rel="stylesheet"
         />
+        {/* Anti-FOUC: read theme from localStorage before first paint */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('eduglobe-theme');if(t==='light')document.documentElement.dataset.theme='light';}catch(e){}})();` }} />
       </head>
       <body>
         <AuthProvider>
