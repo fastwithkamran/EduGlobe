@@ -335,7 +335,7 @@ function SocietyPostCard({ post, currentUserId, isAdmin, isSuperAdmin }: {
         )}
       </div>
  
-      <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: post.attachments.length ? 10 : 0 }}>
+      <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: post.attachments.length ? 10 : 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
         {post.content}
       </p>
  

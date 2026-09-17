@@ -229,7 +229,7 @@ function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdm
           </button>
         </div>
 
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, marginBottom: post.attachments.length > 0 ? 12 : 0 }}>{post.content}</p>
+        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, marginBottom: post.attachments.length > 0 ? 12 : 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>
 
         {/* Attachments */}
         {post.attachments.length > 0 && (
