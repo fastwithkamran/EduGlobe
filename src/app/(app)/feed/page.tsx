@@ -114,6 +114,25 @@ function CommentThread({ postId }: { postId: string }) {
   );
 }
 
+// ─── Image with skeleton loading ─────────────────────────────────────────────
+function ImageWithSkeleton({ src, alt }: { src: string; alt: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <a href={src} target="_blank" rel="noreferrer"
+      style={{ borderRadius: 8, overflow: 'hidden', display: 'block', maxWidth: 280, border: '1px solid var(--border-primary)', position: 'relative', minHeight: 80 }}>
+      {/* Shimmer shown until image loads */}
+      {!loaded && (
+        <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-tertiary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
+      )}
+      <img
+        src={src} alt={alt}
+        onLoad={() => setLoaded(true)}
+        style={{ width: '100%', height: 'auto', display: 'block', opacity: loaded ? 1 : 0, transition: 'opacity .3s' }}
+      />
+    </a>
+  );
+}
+
 // ─── Post Card ────────────────────────────────────────────────────────────────
 
 function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdmin }: {
@@ -218,9 +237,7 @@ function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdm
             {post.attachments.map(att => {
               const isImg = att.fileType.startsWith('image/');
               return isImg ? (
-                <a key={att.id} href={sanitizeImageUrl(att.fileURL)} target="_blank" rel="noreferrer" style={{ borderRadius: 8, overflow: 'hidden', display: 'block', maxWidth: 280, border: '1px solid var(--border-primary)' }}>
-                  <img src={sanitizeImageUrl(att.fileURL)} alt={att.fileName} style={{ width: '100%', height: 'auto', display: 'block' }} />
-                </a>
+                <ImageWithSkeleton key={att.id} src={sanitizeImageUrl(att.fileURL)} alt={att.fileName} />
               ) : (
                 <a key={att.id} href={sanitizeImageUrl(att.fileURL)} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: 8, textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 12 }}>
                   📎 {att.fileName}
@@ -322,10 +339,19 @@ export default function GlobalFeedPage() {
   const currentPosts = tab === 'all' ? allPosts : followingPosts;
   const isLoading = tab === 'all' ? loadingAll : !followingLoaded;
 
+  // ─── Search / filter ───────────────────────────────────────────────────────
+  const [search, setSearch] = useState('');
+  const filteredPosts = search.trim()
+    ? currentPosts.filter(p =>
+        p.societyName.toLowerCase().includes(search.toLowerCase()) ||
+        p.content.toLowerCase().includes(search.toLowerCase())
+      )
+    : currentPosts;
+
   return (
     <>
       <div style={{ padding: 'var(--page-padding-y) var(--page-padding-x) 0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
           <div>
             <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, marginBottom: 4 }}>🌐 Global Learning Feed</h1>
             <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
@@ -336,6 +362,20 @@ export default function GlobalFeedPage() {
                 </span>
               )}
             </p>
+          </div>
+          {/* Search bar */}
+          <div style={{ position: 'relative', minWidth: 220 }}>
+            <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
+            <input
+              className="input"
+              placeholder="Search posts or institutes…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ paddingLeft: 32, fontSize: 13, width: '100%' }}
+            />
+            {search && (
+              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+            )}
           </div>
         </div>
 
@@ -379,41 +419,51 @@ export default function GlobalFeedPage() {
               </div>
             ))}
           </div>
-        ) : currentPosts.length === 0 ? (
-          // ── Enhanced empty state ────────────────────────────────────────────
+        ) : filteredPosts.length === 0 ? (
+          // ── Empty / no-results state ────────────────────────────────────────
           <div style={{ textAlign: 'center', padding: '80px 24px' }}>
             <div style={{ fontSize: 52, marginBottom: 16, filter: 'grayscale(0.2)' }}>
-              {tab === 'following' ? '🔔' : '📭'}
+              {search ? '🔍' : tab === 'following' ? '🔔' : '📭'}
             </div>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8, fontFamily: 'var(--font-heading)' }}>
-              {tab === 'following' ? 'Your feed is quiet' : 'No posts yet'}
+              {search ? 'No matches found' : tab === 'following' ? 'Your feed is quiet' : 'No posts yet'}
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-tertiary)', maxWidth: 320, margin: '0 auto 24px', lineHeight: 1.7 }}>
-              {tab === 'following'
-                ? 'Follow institutes from the All Posts tab to see their updates here.'
-                : 'Institutes haven\'t posted yet. Check back soon or explore societies.'}
+              {search
+                ? `No posts or institutes match "${search}". Try a different search term.`
+                : tab === 'following'
+                  ? 'Follow institutes from the All Posts tab to see their updates here.'
+                  : "Institutes haven't posted yet. Check back soon or explore societies."}
             </p>
-            {tab === 'following' ? (
-              <button className="btn btn-primary btn-sm" onClick={() => setTab('all')}>
-                🌐 Browse All Posts
-              </button>
+            {search ? (
+              <button className="btn btn-outline btn-sm" onClick={() => setSearch('')}>✕ Clear Search</button>
+            ) : tab === 'following' ? (
+              <button className="btn btn-primary btn-sm" onClick={() => setTab('all')}>🌐 Browse All Posts</button>
             ) : (
-              <a href="/societies" className="btn btn-outline btn-sm">
-                🏛️ Explore Institutes
-              </a>
+              <a href="/societies" className="btn btn-outline btn-sm">🏛️ Explore Institutes</a>
             )}
           </div>
         ) : (
-          currentPosts.map(post => (
-            <PostCard
-              key={post.id}
-              post={post}
-              currentUserId={user?.uid}
-              followedIds={followedIds}
-              onFollowToggle={handleFollowToggle}
-              isSuperAdmin={isSuperAdmin}
-            />
-          ))
+          <>
+            {filteredPosts.map(post => (
+              <PostCard
+                key={post.id}
+                post={post}
+                currentUserId={user?.uid}
+                followedIds={followedIds}
+                onFollowToggle={handleFollowToggle}
+                isSuperAdmin={isSuperAdmin}
+              />
+            ))}
+            {/* End-of-feed indicator */}
+            <div style={{ textAlign: 'center', padding: '28px 0 8px', color: 'var(--text-muted)', fontSize: 12, borderTop: '1px solid var(--border-secondary)', marginTop: 8 }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 20, height: 1, background: 'var(--border-secondary)', display: 'inline-block' }} />
+                {filteredPosts.length} post{filteredPosts.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ' · You\'re all caught up'}
+                <span style={{ width: 20, height: 1, background: 'var(--border-secondary)', display: 'inline-block' }} />
+              </span>
+            </div>
+          </>
         )}
       </div>
     </>

@@ -39,7 +39,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster
             position="bottom-right"
+            gutter={10}
             toastOptions={{
+              duration: 3500,
               style: {
                 background: '#111827',
                 color: '#f9fafb',
@@ -47,9 +49,33 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 borderRadius: '12px',
                 fontSize: '0.875rem',
                 fontFamily: 'Inter, sans-serif',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                maxWidth: '380px',
               },
-              success: { iconTheme: { primary: '#10b981', secondary: '#111827' } },
-              error:   { iconTheme: { primary: '#ef4444', secondary: '#111827' } },
+              success: {
+                duration: 3000,
+                iconTheme: { primary: '#10b981', secondary: '#111827' },
+                style: {
+                  background: '#111827',
+                  color: '#f9fafb',
+                  border: '1px solid rgba(16,185,129,0.3)',
+                  borderLeft: '4px solid #10b981',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                },
+              },
+              error: {
+                duration: 4500,
+                iconTheme: { primary: '#ef4444', secondary: '#111827' },
+                style: {
+                  background: '#111827',
+                  color: '#f9fafb',
+                  border: '1px solid rgba(239,68,68,0.3)',
+                  borderLeft: '4px solid #ef4444',
+                  borderRadius: '12px',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+                },
+              },
             }}
           />
         </AuthProvider>
