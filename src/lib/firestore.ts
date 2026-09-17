@@ -216,6 +216,16 @@ export async function createSociety(
  * Sub-collection cascade (comments, messages) requires a Cloud Function.
  */
 export async function deleteSociety(societyId: string): Promise<void> {
+  // Delete society images from Cloudinary first (best-effort)
+  const societySnap = await getDoc(doc(db, 'societies', societyId));
+  if (societySnap.exists()) {
+    const society = fromDoc<Society>(societySnap);
+    await Promise.allSettled([
+      society.logoURL   ? deleteFile(society.logoURL)   : Promise.resolve(),
+      society.bannerURL ? deleteFile(society.bannerURL) : Promise.resolve(),
+    ]);
+  }
+
   const related: Array<[string, string]> = [
     ['posts',       'societyId'],
     ['members',     'societyId'],
@@ -384,6 +394,14 @@ export function subscribeToSocietyPosts(
 }
 
 export async function deletePost(postId: string): Promise<void> {
+  // Delete any Cloudinary file attachments first (best-effort)
+  const postSnap = await getDoc(doc(db, 'posts', postId));
+  if (postSnap.exists()) {
+    const post = fromDoc<Post>(postSnap);
+    if (post.attachments?.length) {
+      await Promise.allSettled(post.attachments.map(att => deleteFile(att.fileURL)));
+    }
+  }
   await deleteDoc(doc(db, 'posts', postId));
 }
 

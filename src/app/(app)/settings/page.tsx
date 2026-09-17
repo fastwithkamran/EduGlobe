@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { updateUserProfile, uploadFile } from '@/lib/firestore';
+import { updateUserProfile, uploadFile, deleteFile } from '@/lib/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { sanitizeImageUrl } from '@/../lib/utils';
 
@@ -53,6 +53,9 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
 
+    // Capture old photo URL before overwriting
+    const oldPhotoURL = userProfile?.photoURL ?? null;
+
     // Local preview
     setPreviewURL(URL.createObjectURL(file));
     setUploading(true);
@@ -64,6 +67,9 @@ export default function SettingsPage() {
       await updateUserProfile(user.uid, { photoURL: url });
       await refreshUserProfile();
       toast.success('Profile picture updated!');
+
+      // Best-effort: delete the old Cloudinary avatar (won't fail if it's a Google URL)
+      if (oldPhotoURL) deleteFile(oldPhotoURL);
     } catch {
       toast.error('Failed to upload photo');
       setPreviewURL(userProfile?.photoURL ?? null);
