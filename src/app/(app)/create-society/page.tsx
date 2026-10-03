@@ -8,21 +8,33 @@ import { createSociety, uploadFile } from '@/lib/firestore';
 import { sanitizeImageUrl } from '@/lib/utils';
 import type { CommunityLinks } from '@/types';
 
-// ─── Reusable class strings ────────────────────────────────────────────────────
-const cardCls  = 'rounded-xl border border-[var(--border-primary)] bg-[var(--bg-card)] overflow-hidden mb-4';
-const headCls  = 'px-5 py-3.5 border-b border-[var(--border-primary)] text-sm font-bold text-[var(--text-primary)]';
-const bodyCls  = 'p-5';
-const labelCls = 'block text-xs font-semibold text-[var(--text-secondary)] mb-1.5';
+// ─── Static styles ─────────────────────────────────────────────────────────────
+const card: React.CSSProperties = {
+  background: 'var(--bg-card)', border: '1px solid var(--border-primary)',
+  borderRadius: 'var(--radius-xl)', overflow: 'hidden', marginBottom: 16,
+};
+const head: React.CSSProperties = {
+  padding: '14px 20px', borderBottom: '1px solid var(--border-primary)',
+  fontSize: 14, fontWeight: 700, color: 'var(--text-primary)',
+  fontFamily: 'var(--font-heading)',
+};
+const body: React.CSSProperties = { padding: 20 };
+const label: React.CSSProperties = {
+  display: 'block', fontSize: 12, fontWeight: 600,
+  color: 'var(--text-secondary)', marginBottom: 6,
+};
+const fieldGap: React.CSSProperties = { marginBottom: 14 };
 
-// Community link config
+// ─── Community link config ─────────────────────────────────────────────────────
 const COMMUNITY_LINKS: { key: keyof CommunityLinks; icon: string; label: string; placeholder: string }[] = [
-  { key: 'discord',   icon: '🎮', label: 'Discord Server',  placeholder: 'https://discord.gg/...' },
-  { key: 'whatsapp',  icon: '💬', label: 'WhatsApp Group',  placeholder: 'https://chat.whatsapp.com/...' },
+  { key: 'discord',   icon: '🎮', label: 'Discord Server',  placeholder: 'https://discord.gg/...'           },
+  { key: 'whatsapp',  icon: '💬', label: 'WhatsApp Group',  placeholder: 'https://chat.whatsapp.com/...'    },
   { key: 'linkedin',  icon: '💼', label: 'LinkedIn Page',   placeholder: 'https://linkedin.com/company/...' },
-  { key: 'twitter',   icon: '🐦', label: 'X / Twitter',     placeholder: 'https://twitter.com/...' },
-  { key: 'instagram', icon: '📸', label: 'Instagram',       placeholder: 'https://instagram.com/...' },
+  { key: 'twitter',   icon: '🐦', label: 'X / Twitter',     placeholder: 'https://twitter.com/...'          },
+  { key: 'instagram', icon: '📸', label: 'Instagram',       placeholder: 'https://instagram.com/...'        },
 ];
 
+// ─── Page ──────────────────────────────────────────────────────────────────────
 export default function CreateSocietyPage() {
   const router = useRouter();
   const { user, userProfile, refreshUserProfile } = useAuth();
@@ -36,37 +48,19 @@ export default function CreateSocietyPage() {
     website:      '',
     contactEmail: '',
     communityLinks: {
-      discord:   '',
-      whatsapp:  '',
-      linkedin:  '',
-      twitter:   '',
-      instagram: '',
+      discord: '', whatsapp: '', linkedin: '', twitter: '', instagram: '',
     } satisfies CommunityLinks,
   });
 
-  const [logoFile,     setLogoFile]     = useState<File | null>(null);
-  const [bannerFile,   setBannerFile]   = useState<File | null>(null);
-  const [logoPreview,  setLogoPreview]  = useState<string | null>(null);
-  const [bannerPreview,setBannerPreview]= useState<string | null>(null);
-  const [saving,       setSaving]       = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [logoFile,      setLogoFile]      = useState<File | null>(null);
+  const [bannerFile,    setBannerFile]    = useState<File | null>(null);
+  const [logoPreview,   setLogoPreview]   = useState<string | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [saving,        setSaving]        = useState(false);
+  const [uploadProgress,setUploadProgress]= useState(0);
 
   const logoRef   = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLInputElement>(null);
-
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setLogoFile(f);
-    setLogoPreview(URL.createObjectURL(f));
-  };
-
-  const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    setBannerFile(f);
-    setBannerPreview(URL.createObjectURL(f));
-  };
 
   const setLink = (key: keyof CommunityLinks, value: string) =>
     setForm(p => ({ ...p, communityLinks: { ...p.communityLinks, [key]: value } }));
@@ -87,38 +81,24 @@ export default function CreateSocietyPage() {
 
     setSaving(true);
     try {
-      let logoURL   = '';
-      let bannerURL = '';
-      const tempId  = `temp_${Date.now()}`;
+      let logoURL = '', bannerURL = '';
+      const tempId = `temp_${Date.now()}`;
 
-      // Upload logo → Cloudinary (10% → 50%)
       if (logoFile) {
         setUploadProgress(10);
-        logoURL = await uploadFile(
-          logoFile,
-          `societies/${tempId}/logo_${logoFile.name}`,
-          p => setUploadProgress(10 + p * 0.4),
-        );
+        logoURL = await uploadFile(logoFile, `societies/${tempId}/logo_${logoFile.name}`, p => setUploadProgress(10 + p * 0.4));
       }
-
-      // Upload banner → Cloudinary (50% → 90%)
       if (bannerFile) {
-        setUploadProgress(prev => Math.max(prev, 50));
-        bannerURL = await uploadFile(
-          bannerFile,
-          `societies/${tempId}/banner_${bannerFile.name}`,
-          p => setUploadProgress(50 + p * 0.4),
-        );
+        setUploadProgress(p => Math.max(p, 50));
+        bannerURL = await uploadFile(bannerFile, `societies/${tempId}/banner_${bannerFile.name}`, p => setUploadProgress(50 + p * 0.4));
       }
-
       setUploadProgress(90);
 
-      // Strip empty community links before saving
       const communityLinks: CommunityLinks = Object.fromEntries(
         Object.entries(form.communityLinks).filter(([, v]) => v.trim()),
       );
 
-      const societyId = await createSociety(
+      await createSociety(
         {
           name:         form.name.trim(),
           organization: form.organization.trim(),
@@ -132,12 +112,7 @@ export default function CreateSocietyPage() {
           logoURL,
           bannerURL,
         },
-        {
-          uid:         user.uid,
-          displayName: userProfile.displayName,
-          email:       user.email ?? '',
-          photoURL:    userProfile.photoURL,
-        },
+        { uid: user.uid, displayName: userProfile.displayName, email: user.email ?? '', photoURL: userProfile.photoURL },
       );
 
       setUploadProgress(100);
@@ -153,16 +128,23 @@ export default function CreateSocietyPage() {
     }
   };
 
+  // ─── Upload dropzone ──────────────────────────────────────────────────────────
+  const dropzone: React.CSSProperties = {
+    border: '2px dashed var(--border-primary)', borderRadius: 12, cursor: 'pointer',
+    overflow: 'hidden', height: 120, display: 'flex', alignItems: 'center',
+    justifyContent: 'center', transition: 'border-color .2s',
+    background: 'rgba(255,255,255,0.02)',
+  };
+
   return (
-    <div className="px-[var(--page-padding-x)] py-[var(--page-padding-y)] max-w-[700px]">
+    <div style={{ padding: 'var(--page-padding-y) var(--page-padding-x)', maxWidth: 700 }}>
 
       {/* Page header */}
-      <div className="mb-6">
-        <h1 className="text-[22px] font-extrabold text-[var(--text-primary)] mb-1"
-            style={{ fontFamily: 'var(--font-heading)' }}>
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
           ✚ Share Wisdom
         </h1>
-        <p className="text-[13px] text-[var(--text-tertiary)]">
+        <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
           You&apos;ll automatically become the admin. All institutes are public and appear in the global feed.
         </p>
       </div>
@@ -170,131 +152,122 @@ export default function CreateSocietyPage() {
       <form onSubmit={handleSubmit}>
 
         {/* ─── Basic Information ─── */}
-        <div className={cardCls}>
-          <div className={headCls}>Basic Information</div>
-          <div className={bodyCls}>
-            <div className="flex flex-col gap-3.5">
-
+        <div style={card}>
+          <div style={head}>Basic Information</div>
+          <div style={body}>
+            <div style={fieldGap}>
+              <label style={label}>Institute / Society Name *</label>
+              <input className="input" style={{ width: '100%' }} placeholder="e.g. FAST Computing Society"
+                value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
+            </div>
+            <div style={fieldGap}>
+              <label style={label}>Organization (University / Company / Club)</label>
+              <input className="input" style={{ width: '100%' }} placeholder="e.g. FAST-NUCES Karachi"
+                value={form.organization} onChange={e => setForm(p => ({ ...p, organization: e.target.value }))} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, ...fieldGap }}>
               <div>
-                <label className={labelCls}>Institute / Society Name *</label>
-                <input className="input w-full" placeholder="e.g. FAST Computing Society"
-                  value={form.name}
-                  onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
+                <label style={label}>City *</label>
+                <input className="input" style={{ width: '100%' }} placeholder="Karachi"
+                  value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} required />
               </div>
-
               <div>
-                <label className={labelCls}>Organization (University / Company / Club)</label>
-                <input className="input w-full" placeholder="e.g. FAST-NUCES Karachi"
-                  value={form.organization}
-                  onChange={e => setForm(p => ({ ...p, organization: e.target.value }))} />
+                <label style={label}>Country *</label>
+                <input className="input" style={{ width: '100%' }} placeholder="Pakistan"
+                  value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))} required />
               </div>
-
-              <div className="grid grid-cols-2 gap-3.5">
-                <div>
-                  <label className={labelCls}>City *</label>
-                  <input className="input w-full" placeholder="Karachi"
-                    value={form.city}
-                    onChange={e => setForm(p => ({ ...p, city: e.target.value }))} required />
-                </div>
-                <div>
-                  <label className={labelCls}>Country *</label>
-                  <input className="input w-full" placeholder="Pakistan"
-                    value={form.country}
-                    onChange={e => setForm(p => ({ ...p, country: e.target.value }))} required />
-                </div>
-              </div>
-
-              <div>
-                <label className={labelCls}>Description *</label>
-                <textarea className="input w-full resize-y" rows={4}
-                  placeholder="What does your society do? Who is it for?"
-                  value={form.description}
-                  onChange={e => setForm(p => ({ ...p, description: e.target.value }))} required />
-              </div>
-
+            </div>
+            <div>
+              <label style={label}>Description *</label>
+              <textarea className="input" style={{ width: '100%', resize: 'vertical' }} rows={4}
+                placeholder="What does your society do? Who is it for?"
+                value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} required />
             </div>
           </div>
         </div>
 
         {/* ─── Logo & Banner ─── */}
-        <div className={cardCls}>
-          <div className={headCls}>Logo &amp; Banner</div>
-          <div className={bodyCls}>
-            <div className="grid grid-cols-[1fr_2fr] gap-4">
+        <div style={card}>
+          <div style={head}>Logo &amp; Banner</div>
+          <div style={body}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16 }}>
 
               {/* Logo */}
               <div>
-                <label className={labelCls}>Logo (400×400 recommended)</label>
+                <label style={label}>Logo (400×400 recommended)</label>
                 <div
+                  style={dropzone}
                   onClick={() => logoRef.current?.click()}
-                  className="border-2 border-dashed border-[var(--border-primary)] rounded-xl cursor-pointer overflow-hidden h-[120px] flex items-center justify-center transition-colors hover:border-[var(--primary-500)] bg-white/[0.02]"
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary-500)')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-primary)')}
                 >
                   {logoPreview
-                    ? <img src={sanitizeImageUrl(logoPreview)} alt="logo" className="w-full h-full object-cover" />
-                    : <div className="text-center text-[var(--text-muted)] text-xs">
-                        <div className="text-2xl mb-1">🖼️</div>Upload Logo
+                    ? <img src={sanitizeImageUrl(logoPreview)} alt="logo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>🖼️</div>Upload Logo
                       </div>}
                 </div>
-                <input ref={logoRef} type="file" accept="image/*" className="hidden" onChange={handleLogoChange} />
+                <input ref={logoRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) { setLogoFile(f); setLogoPreview(URL.createObjectURL(f)); }}} />
               </div>
 
               {/* Banner */}
               <div>
-                <label className={labelCls}>Banner (1200×400 recommended)</label>
+                <label style={label}>Banner (1200×400 recommended)</label>
                 <div
+                  style={dropzone}
                   onClick={() => bannerRef.current?.click()}
-                  className="border-2 border-dashed border-[var(--border-primary)] rounded-xl cursor-pointer overflow-hidden h-[120px] flex items-center justify-center transition-colors hover:border-[var(--primary-500)] bg-white/[0.02]"
+                  onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary-500)')}
+                  onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-primary)')}
                 >
                   {bannerPreview
-                    ? <img src={sanitizeImageUrl(bannerPreview)} alt="banner" className="w-full h-full object-cover" />
-                    : <div className="text-center text-[var(--text-muted)] text-xs">
-                        <div className="text-2xl mb-1">🏔️</div>Upload Banner
+                    ? <img src={sanitizeImageUrl(bannerPreview)} alt="banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
+                        <div style={{ fontSize: 24, marginBottom: 4 }}>🏔️</div>Upload Banner
                       </div>}
                 </div>
-                <input ref={bannerRef} type="file" accept="image/*" className="hidden" onChange={handleBannerChange} />
+                <input ref={bannerRef} type="file" accept="image/*" style={{ display: 'none' }}
+                  onChange={e => { const f = e.target.files?.[0]; if (f) { setBannerFile(f); setBannerPreview(URL.createObjectURL(f)); }}} />
               </div>
 
             </div>
           </div>
         </div>
 
-        {/* ─── Contact (Optional) ─── */}
-        <div className={cardCls}>
-          <div className={headCls}>
-            Contact
-            <span className="text-xs font-normal text-[var(--text-muted)] ml-1">— optional</span>
+        {/* ─── Contact ─── */}
+        <div style={card}>
+          <div style={head}>
+            Contact <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>— optional</span>
           </div>
-          <div className={bodyCls}>
-            <div className="grid grid-cols-2 gap-3.5">
+          <div style={body}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div>
-                <label className={labelCls}>Website</label>
-                <input className="input w-full" type="url" placeholder="https://yoursociety.com"
-                  value={form.website}
-                  onChange={e => setForm(p => ({ ...p, website: e.target.value }))} />
+                <label style={label}>Website</label>
+                <input className="input" style={{ width: '100%' }} type="url" placeholder="https://yoursociety.com"
+                  value={form.website} onChange={e => setForm(p => ({ ...p, website: e.target.value }))} />
               </div>
               <div>
-                <label className={labelCls}>Contact Email</label>
-                <input className="input w-full" type="email" placeholder="contact@society.com"
-                  value={form.contactEmail}
-                  onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))} />
+                <label style={label}>Contact Email</label>
+                <input className="input" style={{ width: '100%' }} type="email" placeholder="contact@society.com"
+                  value={form.contactEmail} onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))} />
               </div>
             </div>
           </div>
         </div>
 
-        {/* ─── Community Links (Optional) ─── */}
-        <div className={cardCls}>
-          <div className={headCls}>
-            Community Links
-            <span className="text-xs font-normal text-[var(--text-muted)] ml-1">— where your community hangs out</span>
+        {/* ─── Community Links ─── */}
+        <div style={card}>
+          <div style={head}>
+            Community Links <span style={{ fontSize: 11, fontWeight: 400, color: 'var(--text-muted)' }}>— where your community hangs out</span>
           </div>
-          <div className={bodyCls}>
-            <div className="grid grid-cols-1 gap-3">
-              {COMMUNITY_LINKS.map(({ key, icon, label, placeholder }) => (
+          <div style={body}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {COMMUNITY_LINKS.map(({ key, icon, label: lbl, placeholder }) => (
                 <div key={key}>
-                  <label className={labelCls}>{icon} {label}</label>
+                  <label style={label}>{icon} {lbl}</label>
                   <input
-                    className="input w-full"
+                    className="input"
+                    style={{ width: '100%' }}
                     type="url"
                     placeholder={placeholder}
                     value={form.communityLinks[key] ?? ''}
@@ -306,23 +279,20 @@ export default function CreateSocietyPage() {
           </div>
         </div>
 
-        {/* Upload Progress */}
+        {/* Upload progress */}
         {saving && uploadProgress > 0 && (
-          <div className="mb-4">
-            <div className="text-xs text-[var(--text-tertiary)] mb-1.5">
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 6 }}>
               {uploadProgress < 90 ? `Uploading images… ${Math.round(uploadProgress)}%` : 'Creating society…'}
             </div>
-            <div className="h-1.5 bg-[var(--bg-tertiary)] rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%`, background: 'var(--gradient-primary)' }}
-              />
+            <div style={{ height: 5, background: 'var(--bg-tertiary)', borderRadius: 999, overflow: 'hidden' }}>
+              <div style={{ width: `${uploadProgress}%`, height: '100%', background: 'var(--gradient-primary)', transition: 'width .4s' }} />
             </div>
           </div>
         )}
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
+        <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
           <button type="button" className="btn btn-outline" onClick={() => router.back()} disabled={saving}>
             Cancel
           </button>

@@ -10,8 +10,6 @@ const QUICK_PROMPTS = [
   { label: '🎓 Scholarships 2026',  prompt: 'List top scholarships available for Pakistani students in 2026, with deadlines and eligibility' },
   { label: '💼 Internships',        prompt: 'What are the best internship opportunities for CS students in Pakistan right now?' },
   { label: '🌐 Global Contests',    prompt: 'What global student competitions and hackathons are open to Pakistani students?' },
-  { label: '📢 Write Post',         prompt: 'Help me write an engaging announcement post for a hackathon on EduGlobe' },
-  { label: '📈 Grow Society',       prompt: 'How can our institute grow its student community on EduGlobe?' },
 ];
 
 function timeLabel(date: Date): string {
