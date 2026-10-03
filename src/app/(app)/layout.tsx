@@ -40,7 +40,7 @@ const NAV_ITEMS = [
     section: 'Admin Controls',
     superAdminSection: true,
     items: [
-      { label: 'Manage Societies', href: '/societies',      icon: '🗂️', superAdminOnly: true },
+      { label: 'Manage Societies', href: '/super-admin',    icon: '🗂️', superAdminOnly: true },
     ],
   },
 ];
