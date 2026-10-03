@@ -7,7 +7,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const apiKey = process.env.EDU_AI_KEY;
 
 if (!apiKey) {
-  console.warn('⚠️  Missing GEMINI_API_KEY — AI features unavailable.');
+  console.warn('⚠️  Missing EDU_AI_KEY — AI features unavailable.');
 }
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
@@ -49,36 +49,66 @@ export interface ChatMessage {
   content: string;
 }
 
+// Shared chat config — used by both response and stream functions
+function buildChat(conversationHistory: ChatMessage[]) {
+  if (!geminiModel) return null;
+  return geminiModel.startChat({
+    history: [
+      { role: 'user',  parts: [{ text: SYSTEM_PROMPT }] },
+      { role: 'model', parts: [{ text: 'Understood. I am EduGlobe\'s AI Assistant, ready to help institutions, organisations, and scholars create impactful content for students worldwide.' }] },
+      ...conversationHistory.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
+        parts: [{ text: msg.content }],
+      })),
+    ],
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.9,
+      topK: 40,
+      maxOutputTokens: 2048,
+    },
+  });
+}
+
 /**
- * Generate a response from Gemini given a user message and conversation history.
- * Called from /api/ai/route.ts — NEVER from client components.
+ * Stream a Gemini response chunk-by-chunk.
+ * Used by /api/ai to return a ReadableStream instead of waiting for the full response.
+ * Yields text chunks as they arrive — far better UX for a chat interface.
+ */
+export async function* generateAIStream(
+  userMessage: string,
+  conversationHistory: ChatMessage[] = [],
+): AsyncGenerator<string> {
+  const chat = buildChat(conversationHistory);
+  if (!chat) {
+    yield 'AI Assistant is currently unavailable. Please ensure EDU_AI_KEY is configured.';
+    return;
+  }
+  try {
+    const streamResult = await chat.sendMessageStream(userMessage);
+    for await (const chunk of streamResult) {
+      const text = chunk.text();
+      if (text) yield text;
+    }
+  } catch (error) {
+    console.error('Gemini stream error:', error);
+    yield 'I encountered an issue. Please try again in a moment.';
+  }
+}
+
+/**
+ * Non-streaming fallback — returns the full response as a string.
+ * Kept for backward compat / testing. The API route now uses generateAIStream.
  */
 export async function generateAIResponse(
   userMessage: string,
   conversationHistory: ChatMessage[] = [],
 ): Promise<string> {
-  if (!geminiModel) {
+  const chat = buildChat(conversationHistory);
+  if (!chat) {
     return 'AI Assistant is currently unavailable. Please ensure EDU_AI_KEY is configured in your environment variables.';
   }
-
   try {
-    const chat = geminiModel.startChat({
-      history: [
-        { role: 'user',  parts: [{ text: SYSTEM_PROMPT }] },
-        { role: 'model', parts: [{ text: 'Understood. I am EduGlobe\'s AI Assistant, ready to help institutions, organisations, and scholars create impactful content for students worldwide.' }] },
-        ...conversationHistory.map(msg => ({
-          role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
-          parts: [{ text: msg.content }],
-        })),
-      ],
-      generationConfig: {
-        temperature: 0.7,
-        topP: 0.9,
-        topK: 40,
-        maxOutputTokens: 2048,
-      },
-    });
-
     const result = await chat.sendMessage(userMessage);
     return result.response.text();
   } catch (error) {

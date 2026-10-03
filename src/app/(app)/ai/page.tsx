@@ -29,6 +29,8 @@ function renderContent(text: string) {
   });
 }
 
+const MAX_MESSAGE_LENGTH = 1_000;
+
 export default function AIPage() {
   const { user } = useAuth();
   const [messages, setMessages] = useState<AIMessage[]>([
@@ -48,12 +50,12 @@ export default function AIPage() {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
 
+    if (trimmed.length > MAX_MESSAGE_LENGTH) return; // hard guard (UI enforces this)
+
     const userMsg: AIMessage = {
-      // eslint-disable-next-line react-hooks/purity
-      id: `u_${Date.now()}`,
+      id: crypto.randomUUID(),
       role: 'user',
       content: trimmed,
-      // eslint-disable-next-line react-hooks/purity
       timestamp: new Date(),
     };
 
@@ -62,15 +64,16 @@ export default function AIPage() {
     setLoading(true);
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
 
+    const aiMsgId = crypto.randomUUID();
+
     try {
-      // Attach Firebase ID token if the user is signed in
       const token = user ? await user.getIdToken() : null;
 
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
           message: trimmed,
@@ -80,24 +83,40 @@ export default function AIPage() {
         }),
       });
 
-      if (!res.ok) throw new Error('API error');
-      const data = await res.json() as { response: string };
+      if (!res.ok || !res.body) {
+        const err = await res.json().catch(() => ({})) as { error?: string };
+        throw new Error(err.error ?? 'API error');
+      }
 
-      const aiMsg: AIMessage = {
-        // eslint-disable-next-line react-hooks/purity
-        id: `a_${Date.now()}`,
-        role: 'assistant',
-        content: data.response,
-        // eslint-disable-next-line react-hooks/purity
-        timestamp: new Date(),
-      };
-
-      setMessages(prev => [...prev, aiMsg]);
-    } catch {
+      // ── Streaming: create placeholder message, fill it as chunks arrive ──
       setMessages(prev => [...prev, {
-        id: `err_${Date.now()}`,
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again in a moment.',
+        id: aiMsgId,
+        role: 'assistant' as const,
+        content: '',
+        timestamp: new Date(),
+      }]);
+      setLoading(false); // hide typing indicator once streaming starts
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        setMessages(prev =>
+          prev.map(m => m.id === aiMsgId ? { ...m, content: m.content + chunk } : m),
+        );
+        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+
+    } catch (err) {
+      setLoading(false);
+      const errText = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setMessages(prev => [...prev, {
+        id: aiMsgId,
+        role: 'assistant' as const,
+        content: errText,
         timestamp: new Date(),
       }]);
     } finally {
@@ -148,7 +167,7 @@ export default function AIPage() {
                   background: isUser ? 'var(--gradient-primary)' : 'linear-gradient(135deg,#3b82f6,#10b981)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff',
                 }}>
-                  {isUser ? (userProfile?.displayName?.slice(0, 2).toUpperCase() ?? 'ME') : 'AI'}
+                  {isUser ? (user?.displayName?.slice(0, 2).toUpperCase() ?? 'ME') : 'AI'}
                 </div>
                 <div>
                   <div style={{
@@ -184,24 +203,36 @@ export default function AIPage() {
         </div>
 
         {/* Input bar */}
-        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-primary)', display: 'flex', gap: 10 }}>
-          <input
-            ref={inputRef}
-            className="input"
-            style={{ flex: 1 }}
-            placeholder="Ask anything…"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
-            disabled={loading}
-          />
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => sendMessage(input)}
-            disabled={loading || !input.trim()}
-          >
-            {loading ? '⏳' : 'Send'}
-          </button>
+        <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border-primary)' }}>
+          {/* Char counter — only visible when approaching limit */}
+          {input.length > 800 && (
+            <div style={{
+              fontSize: 10, textAlign: 'right', marginBottom: 4,
+              color: input.length >= MAX_MESSAGE_LENGTH ? '#ef4444' : 'var(--text-muted)',
+            }}>
+              {input.length}/{MAX_MESSAGE_LENGTH}
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input
+              ref={inputRef}
+              className="input"
+              style={{ flex: 1 }}
+              placeholder="Ask anything…"
+              value={input}
+              maxLength={MAX_MESSAGE_LENGTH}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !e.shiftKey && sendMessage(input)}
+              disabled={loading}
+            />
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => sendMessage(input)}
+              disabled={loading || !input.trim() || input.length > MAX_MESSAGE_LENGTH}
+            >
+              {loading ? '⏳' : 'Send'}
+            </button>
+          </div>
         </div>
       </div>
 
