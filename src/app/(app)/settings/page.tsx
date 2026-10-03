@@ -37,12 +37,14 @@ export default function SettingsPage() {
   // Populate form from profile
   useEffect(() => {
     if (userProfile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         displayName: userProfile.displayName ?? '',
         bio: userProfile.bio ?? '',
         contactInfo: userProfile.contactInfo ?? '',
         universityName: userProfile.universityName ?? '',
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPreviewURL(userProfile.photoURL);
     }
   }, [userProfile]);

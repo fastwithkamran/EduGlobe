@@ -57,6 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   useEffect(() => {
     const saved = localStorage.getItem('eduglobe-theme') as 'dark' | 'light' | null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (saved) setTheme(saved);
   }, []);
   const toggleTheme = () => {

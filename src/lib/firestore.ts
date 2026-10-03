@@ -103,7 +103,20 @@ export async function uploadFile(
 // Silently no-ops on empty or non-Cloudinary URLs.
 
 export async function deleteFile(url: string): Promise<void> {
-  if (!url || !url.includes('cloudinary.com')) return;
+  if (!url) return;
+
+  // Validate the URL is actually from Cloudinary's domain.
+  // url.includes('cloudinary.com') is insufficient — 'evilcloudinary.com'
+  // or 'cloudinary.com.attacker.com' would bypass that check.
+  try {
+    const { hostname } = new URL(url);
+    const isCloudinary =
+      hostname === 'res.cloudinary.com' ||
+      hostname.endsWith('.cloudinary.com');
+    if (!isCloudinary) return;
+  } catch {
+    return; // Malformed URL — skip silently
+  }
 
   const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^./]+)?$/);
   if (!match || !match[1]) return;

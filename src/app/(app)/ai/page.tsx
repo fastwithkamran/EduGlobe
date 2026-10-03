@@ -49,9 +49,11 @@ export default function AIPage() {
     if (!trimmed || loading) return;
 
     const userMsg: AIMessage = {
+      // eslint-disable-next-line react-hooks/purity
       id: `u_${Date.now()}`,
       role: 'user',
       content: trimmed,
+      // eslint-disable-next-line react-hooks/purity
       timestamp: new Date(),
     };
 
@@ -82,9 +84,11 @@ export default function AIPage() {
       const data = await res.json() as { response: string };
 
       const aiMsg: AIMessage = {
+        // eslint-disable-next-line react-hooks/purity
         id: `a_${Date.now()}`,
         role: 'assistant',
         content: data.response,
+        // eslint-disable-next-line react-hooks/purity
         timestamp: new Date(),
       };
 

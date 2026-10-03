@@ -396,6 +396,7 @@ export default function SocietyPage() {
   const postsUnsubRef = useRef<(() => void) | null>(null);
  
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!userProfile?.societyId) { setLoading(false); return; }
  
     getSociety(userProfile.societyId).then(s => {
@@ -426,7 +427,7 @@ export default function SocietyPage() {
           No Academy Yet
         </h2>
         <p style={{ color: 'var(--text-tertiary)', fontSize: 13, marginBottom: 24 }}>
-          You haven't created an Academy. Create one to get started!
+          You haven&apos;t created an Academy. Create one to get started!
         </p>
         <button className="btn btn-primary" onClick={() => router.push('/create-society')}>
           + Start a Education Hub

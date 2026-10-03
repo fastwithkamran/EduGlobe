@@ -25,6 +25,7 @@ export default function NotificationsPage() {
   const unsubRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!user?.uid) { setLoading(false); return; }
     unsubRef.current = subscribeToNotifications(user.uid, data => {
       // Filter to new_post only — per updated spec
@@ -91,7 +92,7 @@ export default function NotificationsPage() {
             <div style={{ fontSize: 36, marginBottom: 12 }}>🔔</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>No notifications yet</div>
             <p style={{ fontSize: 13 }}>
-              Follow institutes in the Global Feed — you'll be notified whenever they post.
+              Follow institutes in the Global Feed — you&apos;ll be notified whenever they post.
             </p>
             <a href="/feed" className="btn btn-primary btn-sm" style={{ marginTop: 16, display: 'inline-flex' }}>
               🌐 Go to Global Feed

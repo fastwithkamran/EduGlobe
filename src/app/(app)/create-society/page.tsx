@@ -165,7 +165,7 @@ if (bannerFile) {
           ✚ Share Wisdom
         </h1>
         <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
-          You'll automatically become the admin. Public institutes appear in the global feed.
+          You&apos;ll automatically become the admin. Public institutes appear in the global feed.
         </p>
       </div>
 
