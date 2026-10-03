@@ -116,13 +116,11 @@ export default function SettingsPage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [signingOut,      setSigningOut]      = useState(false);
 
-  // Theme
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('eduglobe-theme') as 'dark' | 'light' | null;
-    setTheme(saved ?? 'dark');
-  }, []);
+  // Lazy init — reads localStorage on first render; no useEffect needed.
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    if (typeof window === 'undefined') return 'dark';
+    return (localStorage.getItem('eduglobe-theme') as 'dark' | 'light') ?? 'dark';
+  });
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -132,9 +130,11 @@ export default function SettingsPage() {
     localStorage.setItem('eduglobe-theme', next);
   };
 
-  // Populate form from profile
+  // Populate form from profile whenever it loads/refreshes from context.
+  // setState inside useEffect is intentional here — syncing external data to local form state.
   useEffect(() => {
     if (userProfile) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         displayName:    userProfile.displayName    ?? '',
         bio:            userProfile.bio            ?? '',
@@ -144,6 +144,7 @@ export default function SettingsPage() {
       setPreviewURL(userProfile.photoURL);
     }
   }, [userProfile]);
+
 
   const initials = userProfile?.displayName
     ? userProfile.displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()

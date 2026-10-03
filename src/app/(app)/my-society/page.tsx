@@ -31,6 +31,7 @@ export default function MySocietyPage() {
 
   // Re-subscribe whenever societyId OR postLimit changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!userProfile?.societyId) { setLoading(false); return; }
 
     getSociety(userProfile.societyId).then(s => {
@@ -50,7 +51,6 @@ export default function MySocietyPage() {
     );
 
     return () => { unsubRef.current?.(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userProfile?.societyId, postLimit]);
 
   const isAdmin = isSuperAdmin || userProfile?.role === 'admin' || userProfile?.role === 'super_admin';

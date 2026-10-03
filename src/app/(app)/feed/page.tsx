@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   subscribeToFeed, subscribeToFollowingFeed,
@@ -58,21 +58,32 @@ export default function GlobalFeedPage() {
   const followUnsubRef = useRef<(() => void) | null>(null);
 
   // Search + type filter
-  const [search,     setSearch]     = useState('');
-  const [typeFilter, setTypeFilter] = useState<PostType | 'all'>('all');
+  const [search,            setSearch]            = useState('');
+  const [typeFilter,        setTypeFilter]        = useState<PostType | 'all'>('all');
+
+  // Pending new-post badge counts — updated inside subscription callbacks (not during render).
+  // Avoids "Cannot access refs during render" from the React Compiler rule.
+  const [pendingAllCount,   setPendingAllCount]   = useState(0);
+  const [pendingFollowCount,setPendingFollowCount] = useState(0);
 
   // ── Global feed subscription (re-subscribes on pageSize change) ──────────────
   useEffect(() => {
     isInitAllRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPendingAllCount(0); // reset badge on re-subscribe
     allUnsubRef.current?.();
     allUnsubRef.current = subscribeToFeed(incoming => {
       setAllLivePosts(incoming);
       if (isInitAllRef.current) {
+        // First load — mark all as seen, no badge
         isInitAllRef.current = false;
         incoming.forEach(p => seenAllIds.current.add(p.id));
         setDisplayedAll(incoming);
         setLoadingAll(false);
         setLoadingMore(false);
+      } else {
+        // Live update — count posts the user hasn't seen yet
+        setPendingAllCount(incoming.filter(p => !seenAllIds.current.has(p.id)).length);
       }
     }, pageSize);
     return () => allUnsubRef.current?.();
@@ -81,6 +92,7 @@ export default function GlobalFeedPage() {
   // ── Following feed ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user?.uid) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFollowingLoaded(true); // not signed in — nothing to load
       return;
     }
@@ -89,13 +101,18 @@ export default function GlobalFeedPage() {
       setFollowedIds(new Set(ids));
       followUnsubRef.current?.();
       isInitFollowRef.current = true;
+      setPendingFollowCount(0);
       const unsub = subscribeToFollowingFeed(ids, incoming => {
         setFollowingLivePosts(incoming);
         if (isInitFollowRef.current) {
+          // First load — mark all as seen
           isInitFollowRef.current = false;
           incoming.forEach(p => seenFollowingIds.current.add(p.id));
           setDisplayedFollowing(incoming);
           setFollowingLoaded(true);
+        } else {
+          // Live update — count unseen
+          setPendingFollowCount(incoming.filter(p => !seenFollowingIds.current.has(p.id)).length);
         }
       });
       if (unsub) followUnsubRef.current = unsub;
@@ -104,24 +121,25 @@ export default function GlobalFeedPage() {
     return () => followUnsubRef.current?.();
   }, [user?.uid]);
 
-  // ── New post counts (posts arrived since last user action) ───────────────────
-  const pendingAllCount = allLivePosts.filter(p => !seenAllIds.current.has(p.id)).length;
-  const pendingFollowCount = followingLivePosts.filter(p => !seenFollowingIds.current.has(p.id)).length;
   const pendingCount = tab === 'all' ? pendingAllCount : pendingFollowCount;
 
   const showNewPosts = () => {
     if (tab === 'all') {
       allLivePosts.forEach(p => seenAllIds.current.add(p.id));
       setDisplayedAll(allLivePosts);
+      setPendingAllCount(0);
     } else {
       followingLivePosts.forEach(p => seenFollowingIds.current.add(p.id));
       setDisplayedFollowing(followingLivePosts);
+      setPendingFollowCount(0);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // ── Follow toggle ────────────────────────────────────────────────────────────
-  const handleFollowToggle = useCallback((societyId: string, following: boolean) => {
+  // Plain function — React Compiler handles memoization; explicit useCallback
+  // conflicted with ref mutations inside (react-compiler lint error).
+  const handleFollowToggle = (societyId: string, following: boolean) => {
     setFollowedIds(prev => {
       const next = new Set(prev);
       following ? next.add(societyId) : next.delete(societyId);
@@ -131,18 +149,22 @@ export default function GlobalFeedPage() {
       getFollowedSocietyIds(user.uid).then(ids => {
         followUnsubRef.current?.();
         isInitFollowRef.current = true;
+        setPendingFollowCount(0);
         const unsub = subscribeToFollowingFeed(ids, incoming => {
           setFollowingLivePosts(incoming);
           if (isInitFollowRef.current) {
             isInitFollowRef.current = false;
             incoming.forEach(p => seenFollowingIds.current.add(p.id));
             setDisplayedFollowing(incoming);
+          } else {
+            setPendingFollowCount(incoming.filter(p => !seenFollowingIds.current.has(p.id)).length);
           }
         });
         if (unsub) followUnsubRef.current = unsub;
       });
     }
-  }, [user?.uid]);
+  };
+
 
   // ── Derived data ─────────────────────────────────────────────────────────────
   const currentDisplayed = tab === 'all' ? displayedAll : displayedFollowing;
