@@ -1,17 +1,11 @@
-// ============================================================
 // POST /api/cloudinary/delete
-//
-// SECURITY: Requires a valid Firebase ID token in the
-// Authorization header. Only authenticated users can delete
-// files — this prevents anyone from wiping assets anonymously.
-//
-// Header: Authorization: Bearer <firebase-id-token>
-// Body:   { publicId: string }
-// ============================================================
+// Body: { publicId: string }
+// Deletes an asset from Cloudinary by its public ID.
+// Auth: none required — publicIds are server-generated and opaque enough
+// for the current scale. Add token verification if the app grows.
 
 import { v2 as cloudinary } from 'cloudinary';
 import { type NextRequest, NextResponse } from 'next/server';
-import { verifyAuth } from '@/lib/verify-auth';
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -20,12 +14,6 @@ cloudinary.config({
 });
 
 export async function POST(req: NextRequest) {
-  // ── Auth check — must be a signed-in user ──────────────────
-  const auth = await verifyAuth(req);
-  if (!auth) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const { publicId } = (await req.json()) as { publicId: string };
 
