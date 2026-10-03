@@ -80,7 +80,11 @@ export default function GlobalFeedPage() {
 
   // ── Following feed ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setFollowingLoaded(true); // not signed in — nothing to load
+      return;
+    }
+
     getFollowedSocietyIds(user.uid).then(ids => {
       setFollowedIds(new Set(ids));
       followUnsubRef.current?.();
@@ -255,9 +259,22 @@ export default function GlobalFeedPage() {
 
       {/* ── Content ── */}
       <div style={{ padding: '16px var(--page-padding-x)', flex: 1, overflowY: 'auto' }}>
-        {isLoading ? (
+        {/* ── Unauthenticated following tab ── */}
+        {tab === 'following' && !user ? (
+          <div style={{ textAlign: 'center', padding: '80px 24px' }}>
+            <div style={{ fontSize: 52, marginBottom: 16 }}>🔒</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8, fontFamily: 'var(--font-heading)' }}>
+              Sign In to Follow Societies
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--text-tertiary)', maxWidth: 300, margin: '0 auto 24px', lineHeight: 1.7 }}>
+              Create an account to follow institutes and get a personalised feed of their announcements, events, and opportunities.
+            </p>
+            <a href="/login" className="btn btn-primary btn-sm">Sign In</a>
+          </div>
+        ) : isLoading ? (
           <FeedSkeleton />
         ) : filteredPosts.length === 0 ? (
+
           // Empty / no results
           <div style={{ textAlign: 'center', padding: '80px 24px' }}>
             <div style={{ fontSize: 52, marginBottom: 16, filter: 'grayscale(0.2)' }}>
