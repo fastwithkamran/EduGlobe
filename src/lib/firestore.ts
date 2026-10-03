@@ -194,7 +194,7 @@ export async function createSociety(
   // 1. Create society doc
   const societyRef = await addDoc(collection(db, 'societies'), {
     ...data,
-    memberCount: 1,
+    memberCount: 0,
     followerCount: 0,
     isVerified: false,
     createdBy: creator.uid,
@@ -205,18 +205,7 @@ export async function createSociety(
 
   const societyId = societyRef.id;
 
-  // 2. Add creator as 'owner' in the members sub-collection
-  await addDoc(collection(db, 'members'), {
-    userId: creator.uid,
-    societyId,
-    displayName: creator.displayName,
-    photoURL: creator.photoURL,
-    role: 'owner' as MemberRole,
-    email: creator.email,
-    joinedAt: serverTimestamp(),
-  });
-
-  // 3. Update creator's user profile — make them admin of this society
+  // 2. Make creator an admin in their user profile
   await updateDoc(doc(db, 'users', creator.uid), {
     role: 'admin',
     societyId,

@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "societies",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "privacy",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "posts",
       "queryScope": "COLLECTION",
       "fields": [
@@ -42,34 +56,6 @@
         },
         {
           "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "members",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "societyId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "joinedAt",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "groups",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "societyId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "lastActivityAt",
           "order": "DESCENDING"
         }
       ]
@@ -90,20 +76,6 @@
       "fields": [
         {
           "fieldPath": "societyId",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "invitations",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "societyId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
           "order": "ASCENDING"
         }
       ]
