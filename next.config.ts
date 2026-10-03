@@ -2,8 +2,7 @@ import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // firebase-admin uses native Node.js bindings (gRPC) — must NOT be bundled.
-  // Without this, Vercel throws "Failed to load external module firebase-admin-*"
+  // firebase-admin is still used by /api/cloudinary/delete — must not be bundled
   serverExternalPackages: ['firebase-admin'],
   // eslint is configured via eslint.config.mjs (removed from NextConfig in Next.js 16)
 
