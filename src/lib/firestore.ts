@@ -154,6 +154,28 @@ export async function updateUserProfile(
   await updateDoc(doc(db, 'users', uid), { ...updates, updatedAt: serverTimestamp() });
 }
 
+/**
+ * Delete all Firestore data for a user prior to deleting their Auth account.
+ * Removes: users doc, follows, notifications.
+ * Posts and society membership are intentionally kept (soft-delete pattern).
+ */
+export async function deleteUserAccount(uid: string): Promise<void> {
+  // 1. Delete user document
+  await deleteDoc(doc(db, 'users', uid));
+
+  // 2. Delete their follows
+  const followsSnap = await getDocs(
+    query(collection(db, 'follows'), where('followerId', '==', uid)),
+  );
+  await Promise.all(followsSnap.docs.map(d => deleteDoc(d.ref)));
+
+  // 3. Delete their notifications
+  const notifsSnap = await getDocs(
+    query(collection(db, 'notifications'), where('userId', '==', uid)),
+  );
+  await Promise.all(notifsSnap.docs.map(d => deleteDoc(d.ref)));
+}
+
 // ─── Societies ────────────────────────────────────────────────────────────────
 
 export async function getSociety(id: string): Promise<Society | null> {
