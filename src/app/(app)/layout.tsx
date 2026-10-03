@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   {
     section: 'Learning Center',
     items: [
-      { label: 'Academy',          href: '/society',        icon: '🏛️' },
+      { label: 'Academy',          href: '/my-society',     icon: '🏛️' },
       { label: 'Share Wisdom',     href: '/create-society', icon: '✚' },
     ],
   },
@@ -118,7 +118,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const mobileNavItems = [
     { label: 'Feed',    href: '/feed',          icon: '🌐' },
-    { label: 'Academy', href: '/society',        icon: '🏛️' },
+    { label: 'Academy', href: '/my-society',       icon: '🏛️' },
     { label: 'AI',      href: '/ai',             icon: '🤖' },
     { label: 'Alerts',  href: '/notifications',  icon: '🔔', badge: unreadCount },
     { label: 'Profile', href: '/settings',       icon: '⚙️' },

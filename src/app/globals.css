@@ -3,8 +3,11 @@
    Premium dark-mode UI with Pakistan-inspired color palette
    ============================================================ */
 
-/* --- Google Fonts --- */
+/* --- Google Fonts — must come before any CSS rules --- */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+/* --- Tailwind CSS v4 --- */
+@import "tailwindcss";
 
 /* Skeleton shimmer animation */
 @keyframes pulse {

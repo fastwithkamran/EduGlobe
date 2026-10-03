@@ -15,7 +15,7 @@ import { db } from './firebase';
 import type {
   UserProfile, Society, Post, PostComment,
   Notification, Follow,
-  PostAttachment, SocietyCategory, SocietyPrivacy,
+  PostAttachment, SocietyPrivacy,
 } from '@/types';
 
 // ─── Internal helper — Firestore Timestamp → Date ────────────────────────────
@@ -181,11 +181,10 @@ export async function createSociety(
     city: string;
     country: string;
     description: string;
-    category: SocietyCategory;
     privacy: SocietyPrivacy;
     website: string;
     contactEmail: string;
-    tags: string[];
+    communityLinks?: import('@/types').CommunityLinks;
     logoURL: string;
     bannerURL: string;
   },
@@ -346,17 +345,31 @@ export function subscribeToFollowingFeed(
   return onSnapshot(q, snap => callback(snap.docs.map(d => fromDoc<Post>(d))));
 }
 
-/** Posts for a single society — used inside Society page Feed tab */
+/** Posts for a single society — used inside My Society page Feed tab.
+ *  pageLimit drives Load More: re-subscribe with a higher limit to fetch more. */
 export function subscribeToSocietyPosts(
   societyId: string,
   callback: (posts: Post[]) => void,
+  pageLimit = 10,
 ): Unsubscribe {
   const q = query(
     collection(db, 'posts'),
     where('societyId', '==', societyId),
     orderBy('createdAt', 'desc'),
+    limit(pageLimit),
   );
   return onSnapshot(q, snap => callback(snap.docs.map(d => fromDoc<Post>(d))));
+}
+
+/** Edit post content (and optional opportunity meta) — admin only */
+export async function updatePost(
+  postId: string,
+  updates: Partial<Pick<Post, 'content' | 'opportunityMeta'>>,
+): Promise<void> {
+  await updateDoc(doc(db, 'posts', postId), {
+    ...updates,
+    updatedAt: serverTimestamp(),
+  });
 }
 
 export async function deletePost(postId: string): Promise<void> {

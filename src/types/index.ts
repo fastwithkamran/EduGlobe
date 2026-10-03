@@ -20,21 +20,16 @@ export interface UserProfile {
 
 // ─── Society (Institute / Academy) ───────────────────────────────────────────
 
-export type SocietyCategory =
-  | 'educational'
-  | 'professional'
-  | 'cultural'
-  | 'sports'
-  | 'religious'
-  | 'technology'
-  | 'arts'
-  | 'debate'
-  | 'community'
-  | 'entrepreneurship'
-  | 'media'
-  | 'other';
-
 export type SocietyPrivacy = 'public';  // All societies are publicly discoverable
+
+/** Where the community lives — all fields optional */
+export interface CommunityLinks {
+  discord?:   string;  // Discord server invite
+  whatsapp?:  string;  // WhatsApp group link
+  linkedin?:  string;  // LinkedIn page or profile
+  twitter?:   string;  // Twitter/X handle URL
+  instagram?: string;  // Instagram page URL
+}
 
 export interface Society {
   id: string;
@@ -43,13 +38,12 @@ export interface Society {
   city: string;
   country: string;
   description: string;
-  category: SocietyCategory;
   privacy: SocietyPrivacy;
   logoURL: string;
   bannerURL: string;
   website: string;
   contactEmail: string;
-  tags: string[];
+  communityLinks?: CommunityLinks;
   memberCount: number;
   followerCount: number;
   isVerified: boolean;
@@ -57,11 +51,6 @@ export interface Society {
   createdByName: string;
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface SocialLink {
-  platform: 'instagram' | 'facebook' | 'twitter' | 'linkedin' | 'website' | 'youtube';
-  url: string;
 }
 
 
