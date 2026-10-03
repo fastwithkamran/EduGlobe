@@ -1,0 +1,89 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# EduGlobe — Continuous Integration
+#
+# Runs on every push to main and on every Pull Request targeting main.
+# Two jobs:
+#   lint  → catches code style / import errors early (fast ~30s)
+#   build → full production build, same as Vercel runs  (~60-90s)
+#
+# If either job fails, the commit is marked ❌ and Vercel will still deploy
+# (we don't block Vercel here — that's intentional for speed).
+# To block Vercel on CI failure, enable "Ignored Build Step" in Vercel settings.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs for the same branch to save minutes
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # ── Job 1: Lint ─────────────────────────────────────────────────────────────
+  lint:
+    name: 🔍 Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+  # ── Job 2: Build ─────────────────────────────────────────────────────────────
+  build:
+    name: 🏗️ Build
+    runs-on: ubuntu-latest
+    needs: lint        # only run build if lint passes
+
+    env:
+      # ── Public vars (safe to hardcode — NEXT_PUBLIC_ is exposed to browser anyway)
+      NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: hodumcas
+      NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: eduglobe_uploads
+
+      # ── Secret vars — add these in GitHub: Settings → Secrets → Actions
+      # These are only used at RUNTIME (not build time), so dummy values
+      # work for CI builds. But real values are used if you add them as secrets.
+      CLOUDINARY_API_KEY:     ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET:  ${{ secrets.CLOUDINARY_API_SECRET }}
+      EDU_AI_KEY:             ${{ secrets.EDU_AI_KEY }}
+
+      # Firebase Admin — lazy-initialized, not needed at build time
+      FIREBASE_PROJECT_ID:    ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_CLIENT_EMAIL:  ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+      FIREBASE_PRIVATE_KEY:   ${{ secrets.FIREBASE_PRIVATE_KEY }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Production build
+        run: npm run build
+
+      - name: ✅ Build succeeded
+        run: echo "Build passed — safe to deploy"
