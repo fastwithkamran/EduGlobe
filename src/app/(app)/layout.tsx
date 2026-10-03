@@ -211,10 +211,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                       >
                         <span style={{ fontSize: 14, width: 18, textAlign: 'center', flexShrink: 0 }}>{item.icon}</span>
                         {item.label}
-                        {badge > 0 && (
-                          <span style={{ marginLeft: 'auto', background: '#ef4444', color: '#fff', fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 999 }}>
-                            {badge}
-                          </span>
+                        {Boolean(badge > 0) && (
+                          <span style={{
+                            marginLeft: 'auto', width: 8, height: 8, borderRadius: '50%',
+                            background: '#ef4444', flexShrink: 0,
+                          }} />
                         )}
                         {isAdminItem && !isActive && (
                           <span style={{ marginLeft: 'auto', width: 6, height: 6, borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
@@ -321,10 +322,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <span style={{ fontSize: 10, fontWeight: isActive ? 600 : 400, color: isActive ? 'var(--primary-400)' : 'var(--text-secondary)' }}>
                   {item.label}
                 </span>
-                {item.badge && item.badge > 0 && (
-                  <span style={{ position: 'absolute', top: -5, right: 10, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, minWidth: 16, height: 16, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid var(--bg-secondary)' }}>
-                    {item.badge}
-                  </span>
+                {Boolean(item.badge && item.badge > 0) && (
+                  <span style={{
+                    position: 'absolute', top: 0, right: 'calc(50% - 14px)',
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#ef4444',
+                    border: '2px solid var(--bg-primary)',
+                  }} />
                 )}
               </Link>
             );
