@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { createSociety, uploadFile } from '@/lib/firestore';
-import type { SocietyCategory, SocietyPrivacy } from '@/types';
+import type { SocietyCategory } from '@/types';
 import { sanitizeImageUrl } from '@/lib/utils';
 
 export default function CreateSocietyPage() {
@@ -19,7 +19,7 @@ export default function CreateSocietyPage() {
     country: '',
     description: '',
     category: '' as SocietyCategory | '',
-    privacy: 'public' as SocietyPrivacy,
+    privacy: 'public' as const,
     website: '',
     contactEmail: '',
     tags: '',            // comma-separated input
@@ -196,42 +196,6 @@ if (bannerFile) {
             <div>
               <label style={labelStyle}>Description *</label>
               <textarea style={{ ...inputStyle, resize: 'vertical' } as React.CSSProperties} rows={4} placeholder="" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} required />
-            </div>
-          </div>
-        </div>
-
-        {/* ─── Privacy ─── */}
-        <div style={sectionCard}>
-          <div style={sectionHead}>Privacy</div>
-          <div style={sectionBody}>
-            <div>
-              <label style={labelStyle}>Privacy *</label>
-              <div style={{ display: 'flex', gap: 12 }}>
-                {(['public', 'private'] as SocietyPrivacy[]).map(p => (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setForm(prev => ({ ...prev, privacy: p }))}
-                    style={{
-                      flex: 1, padding: '12px 16px', borderRadius: 'var(--radius-lg)', cursor: 'pointer',
-                      border: form.privacy === p ? '2px solid var(--primary-500)' : '1px solid var(--border-primary)',
-                      background: form.privacy === p ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)',
-                      color: form.privacy === p ? 'var(--primary-400)' : 'var(--text-secondary)',
-                      transition: 'all .15s', fontFamily: 'var(--font-body)', fontSize: 13,
-                      textAlign: 'left',
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, marginBottom: 3 }}>
-                      {p === 'public' ? '🌐 Public' : '🔒 Private'}
-                    </div>
-                    <div style={{ fontSize: 11, opacity: 0.8 }}>
-                      {p === 'public'
-                        ? 'Visible in global feed. Anyone can follow.'
-                        : 'Hidden from discovery. Invite-only membership.'}
-                    </div>
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </div>

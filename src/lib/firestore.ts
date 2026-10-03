@@ -9,15 +9,13 @@ import {
   updateDoc, deleteDoc, query, where, orderBy, limit,
   onSnapshot, serverTimestamp, arrayUnion, arrayRemove,
   increment, type QuerySnapshot, type Unsubscribe,
-  startAfter, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
 import type {
-  UserProfile, Society, SocietyMember, Post, PostComment,
-  Group, Message, Notification, MemberInvitation, Follow,
-  PostAttachment, MemberRole, SocietyCategory, SocietyPrivacy,
-  GroupPrivacy, GroupType,
+  UserProfile, Society, Post, PostComment,
+  Notification, Follow,
+  PostAttachment, SocietyCategory, SocietyPrivacy,
 } from '@/types';
 
 // ─── Internal helper — Firestore Timestamp → Date ────────────────────────────
@@ -243,12 +241,10 @@ export async function deleteSociety(societyId: string): Promise<void> {
     ]);
   }
 
+  // Cascade-delete posts and follows for this society
   const related: Array<[string, string]> = [
-    ['posts',       'societyId'],
-    ['members',     'societyId'],
-    ['invitations', 'societyId'],
-    ['groups',      'societyId'],
-    ['follows',     'societyId'],
+    ['posts',   'societyId'],
+    ['follows', 'societyId'],
   ];
   for (const [col, field] of related) {
     const snap = await getDocs(query(collection(db, col), where(field, '==', societyId)));
@@ -269,43 +265,7 @@ export function subscribeToPublicSocieties(
   return onSnapshot(q, snap => callback(snap.docs.map(d => fromDoc<Society>(d))));
 }
 
-// ─── Members ─────────────────────────────────────────────────────────────────
 
-export function subscribeToMembers(
-  societyId: string,
-  callback: (members: SocietyMember[]) => void,
-): Unsubscribe {
-  const q = query(
-    collection(db, 'members'),
-    where('societyId', '==', societyId),
-    orderBy('joinedAt', 'asc'),
-  );
-  return onSnapshot(q, (snap: QuerySnapshot) => callback(snap.docs.map(d => fromDoc<SocietyMember>(d))));
-}
-
-export async function addMember(data: Omit<SocietyMember, 'id'>): Promise<string> {
-  const r = await addDoc(collection(db, 'members'), { ...data, joinedAt: serverTimestamp() });
-  await updateDoc(doc(db, 'societies', data.societyId), { memberCount: increment(1) });
-  return r.id;
-}
-
-export async function removeMember(memberId: string, societyId: string): Promise<void> {
-  await deleteDoc(doc(db, 'members', memberId));
-  await updateDoc(doc(db, 'societies', societyId), { memberCount: increment(-1) });
-}
-
-// ─── Invitations ─────────────────────────────────────────────────────────────
-
-export async function createInvitation(
-  data: Omit<MemberInvitation, 'id' | 'createdAt'>,
-): Promise<string> {
-  const r = await addDoc(collection(db, 'invitations'), {
-    ...data, status: 'pending', createdAt: serverTimestamp(),
-  });
-  return r.id;
-}
-
-// ─── Posts ────────────────────────────────────────────────────────────────────
 
 export async function createPost(
   data: Omit<Post, 'id' | 'createdAt' | 'updatedAt' | 'likeCount' | 'commentCount' | 'likedBy'>,
@@ -483,96 +443,6 @@ export async function getFollowedSocietyIds(userId: string): Promise<string[]> {
   return snap.docs.map(d => (d.data() as Follow).societyId);
 }
 
-// ─── Groups (sub-feature inside Society page) ─────────────────────────────────
-
-export function subscribeToGroups(
-  societyId: string,
-  callback: (groups: Group[]) => void,
-): Unsubscribe {
-  const q = query(
-    collection(db, 'groups'),
-    where('societyId', '==', societyId),
-    orderBy('lastActivityAt', 'desc'),
-  );
-  return onSnapshot(q, snap => callback(snap.docs.map(d => fromDoc<Group>(d))));
-}
-
-export async function createGroup(data: {
-  societyId: string;
-  name: string;
-  description: string;
-  type: GroupType;
-  privacy: GroupPrivacy;
-  iconEmoji: string;
-  createdBy: string;
-  initialMemberId: string;
-}): Promise<string> {
-  const r = await addDoc(collection(db, 'groups'), {
-    societyId: data.societyId,
-    name: data.name,
-    description: data.description,
-    type: data.type,
-    privacy: data.privacy,
-    iconEmoji: data.iconEmoji,
-    memberIds: [data.initialMemberId],
-    memberCount: 1,
-    createdBy: data.createdBy,
-    createdAt: serverTimestamp(),
-    lastActivityAt: serverTimestamp(),
-    lastMessage: undefined,
-  });
-  return r.id;
-}
-
-export async function deleteGroup(groupId: string): Promise<void> {
-  await deleteDoc(doc(db, 'groups', groupId));
-}
-
-// ─── Messages ─────────────────────────────────────────────────────────────────
-
-export function subscribeToMessages(
-  groupId: string,
-  callback: (messages: Message[]) => void,
-  pageSize = 50,
-): Unsubscribe {
-  const q = query(
-    collection(db, 'groups', groupId, 'messages'),
-    orderBy('createdAt', 'desc'),
-    limit(pageSize),
-  );
-  return onSnapshot(q, snap => {
-    callback(snap.docs.map(d => fromDoc<Message>(d)).reverse());
-  });
-}
-
-export async function sendMessage(
-  groupId: string,
-  data: Omit<Message, 'id' | 'createdAt'>,
-): Promise<string> {
-  const r = await addDoc(collection(db, 'groups', groupId, 'messages'), {
-    ...data, createdAt: serverTimestamp(),
-  });
-  await updateDoc(doc(db, 'groups', groupId), {
-    lastActivityAt: serverTimestamp(),
-    lastMessage: data.content,
-  });
-  return r.id;
-}
-
-export async function getPreviousMessages(
-  groupId: string,
-  beforeDoc: QueryDocumentSnapshot,
-  pageSize = 30,
-): Promise<Message[]> {
-  const q = query(
-    collection(db, 'groups', groupId, 'messages'),
-    orderBy('createdAt', 'desc'),
-    startAfter(beforeDoc),
-    limit(pageSize),
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => fromDoc<Message>(d)).reverse();
-}
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 // Per updated spec: notifications are ONLY sent for new_post from followed societies.

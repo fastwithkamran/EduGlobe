@@ -127,7 +127,6 @@ function PostComposer({ society, authorId, authorName }: {
 }) {
   const [content, setContent] = useState('');
   const [type, setType] = useState<PostType>('announcement');
-  const [visibility, setVisibility] = useState<'public' | 'members_only'>('public');
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -154,7 +153,7 @@ function PostComposer({ society, authorId, authorName }: {
         authorName,
         content: content.trim(),
         type,
-        visibility,
+        visibility: 'public',
         attachments,
       });
       toast.success('Post published!');
@@ -206,18 +205,6 @@ function PostComposer({ society, authorId, authorName }: {
           }}>
             {selectedLabel}
           </span>
-        </div>
-        <div>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 }}>Visibility</div>
-          <select
-            value={visibility}
-            onChange={e => setVisibility(e.target.value as 'public' | 'members_only')}
-            className="input select"
-            style={{ width: '100%' }}
-          >
-            <option value="public">🌐 Public</option>
-            <option value="members_only">🔒 Members Only</option>
-          </select>
         </div>
       </div>
  
@@ -315,9 +302,6 @@ function SocietyPostCard({ post, currentUserId, isAdmin, isSuperAdmin }: {
             }}>
               {post.type}
             </span>
-            {post.visibility === 'members_only' && (
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>🔒 Members</span>
-            )}
           </div>
         </div>
         {(isAdmin || isSuperAdmin) && (
@@ -480,13 +464,6 @@ export default function SocietyPage() {
                   ✓ Verified
                 </span>
               )}
-              <span style={{
-                background: society.privacy === 'public' ? 'rgba(96,165,250,0.2)' : 'rgba(107,114,128,0.2)',
-                color: society.privacy === 'public' ? '#60a5fa' : '#9ca3af',
-                padding: '1px 8px', borderRadius: 999, fontSize: 10,
-              }}>
-                {society.privacy === 'public' ? '🌐 Public' : '🔒 Private'}
-              </span>
             </div>
             <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', display: 'flex', gap: 10, flexWrap: 'wrap' }}>
               {society.organization && <span>🏫 {society.organization}</span>}
@@ -574,7 +551,6 @@ export default function SocietyPage() {
                 ['Organization', society.organization || '—'],
                 ['City', society.city],
                 ['Country', society.country],
-                ['Privacy', society.privacy === 'public' ? '🌐 Public' : '🔒 Private'],
                 ['Website', society.website || '—'],
                 ['Contact', society.contactEmail || '—'],
               ] as [string, string][]).map(([k, v]) => (

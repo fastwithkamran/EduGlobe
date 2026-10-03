@@ -1,8 +1,7 @@
-// ============================================================
 // EduGlobe — Type Definitions
-// ============================================================
 
-// --- User & Auth ---
+// ─── User & Auth ─────────────────────────────────────────────────────────────
+
 export type UserRole = 'viewer' | 'admin' | 'super_admin';
 
 export interface UserProfile {
@@ -11,15 +10,16 @@ export interface UserProfile {
   displayName: string;
   photoURL: string | null;
   role: UserRole | null;
-  universityName: string;
-  societyId: string | null;
+  universityName: string;    // University/institution the user belongs to
+  societyId: string | null;  // ID of the Academy they admin (null if viewer)
   bio: string;
   contactInfo?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// --- Society ---
+// ─── Society (Institute / Academy) ───────────────────────────────────────────
+
 export type SocietyCategory =
   | 'educational'
   | 'professional'
@@ -34,13 +34,12 @@ export type SocietyCategory =
   | 'media'
   | 'other';
 
-export type SocietyPrivacy = 'public' | 'private';
+export type SocietyPrivacy = 'public';  // All societies are publicly discoverable
 
 export interface Society {
   id: string;
   name: string;
-  // Organization replaces old "university" — can be university, company, club etc.
-  organization: string;
+  organization: string;   // University, company, or club running this society
   city: string;
   country: string;
   description: string;
@@ -54,8 +53,7 @@ export interface Society {
   memberCount: number;
   followerCount: number;
   isVerified: boolean;
-  // Creator is automatically admin/owner
-  createdBy: string;           // uid
+  createdBy: string;        // uid of creator (auto-becomes admin)
   createdByName: string;
   createdAt: Date;
   updatedAt: Date;
@@ -66,61 +64,30 @@ export interface SocialLink {
   url: string;
 }
 
-// --- Society Members (lightweight — shown inside Society page, no separate page) ---
-export type MemberRole =
-  | 'owner'
-  | 'admin'
-  | 'moderator'
-  | 'member';
 
-export interface SocietyMember {
-  id: string;
-  userId: string;
-  societyId: string;
-  displayName: string;
-  photoURL: string | null;
-  role: MemberRole;
-  email: string;
-  joinedAt: Date;
-}
+// ─── Posts ────────────────────────────────────────────────────────────────────
 
-// --- Member Invitation ---
-export interface MemberInvitation {
-  id: string;
-  societyId: string;
-  societyName: string;
-  invitedByUid: string;
-  invitedByName: string;
-  invitedByEmail: string;
-  invitedEmail: string;
-  role: MemberRole;
-  status: 'pending' | 'accepted' | 'declined';
-  createdAt: Date;
-  expiresAt: Date;
-}
-
-// --- Posts ---
 export type PostType =
   | 'announcement'
   | 'event'
   | 'achievement'
   | 'recruitment'
   | 'general'
-  | 'hackathon'      // 🏆 Competition / hackathon listing
-  | 'scholarship'    // 🎓 Scholarship opportunity
-  | 'internship';    // 💼 Internship / job opportunity
+  | 'hackathon'  
+  | 'scholarship' 
+  | 'internship';  
 
-export type PostVisibility = 'public' | 'members_only';
+export type PostVisibility = 'public';  // All posts are public — member system removed
 
 /** Structured metadata for hackathon / scholarship / internship posts */
 export interface OpportunityMeta {
-  deadline?: string;        // ISO date string e.g. "2026-10-15"
-  prize?: string;           // e.g. "PKR 2.5M" or "USD 10,000"
-  location?: string;        // e.g. "Online" | "Karachi" | "Remote"
-  skills?: string[];        // e.g. ["Python", "ML", "Web Dev"]
-  applyLink?: string;       // Direct application URL
-  organizer?: string;       // e.g. "Google", "LUMS", "HEC"
-  country?: string;         // e.g. "Pakistan" | "Global"
+  deadline?: string;  
+  prize?: string;     
+  location?: string;  
+  skills?: string[];  
+  applyLink?: string; 
+  organizer?: string; 
+  country?: string;   
 }
 
 export interface Post {
@@ -137,7 +104,7 @@ export interface Post {
   likeCount: number;
   commentCount: number;
   likedBy: string[];
-  opportunityMeta?: OpportunityMeta;  // Only present on hackathon/scholarship/internship posts
+  opportunityMeta?: OpportunityMeta; // Only on hackathon/scholarship/internship posts
   createdAt: Date;
   updatedAt: Date;
 }
@@ -160,7 +127,8 @@ export interface PostComment {
   createdAt: Date;
 }
 
-// --- Follow ---
+// ─── Follow ───────────────────────────────────────────────────────────────────
+
 export interface Follow {
   id: string;
   followerId: string;
@@ -168,45 +136,12 @@ export interface Follow {
   createdAt: Date;
 }
 
-// --- Groups (sub-feature inside Society page, not a top-level nav item) ---
-export type GroupType = 'general' | 'committee' | 'project' | 'announcement';
-export type GroupPrivacy = 'public' | 'private';  // public = all society members, private = invite-only
 
-export interface Group {
-  id: string;
-  societyId: string;
-  name: string;
-  description: string;
-  type: GroupType;
-  privacy: GroupPrivacy;
-  iconEmoji: string;
-  memberIds: string[];
-  memberCount: number;
-  createdBy: string;
-  createdAt: Date;
-  lastActivityAt: Date;
-  lastMessage?: string;
-}
+// ─── Notifications ────────────────────────────────────────────────────────────
+// Only 'new_post' actively triggers notifications (from followed societies).
 
-export interface Message {
-  id: string;
-  groupId: string;
-  senderId: string;
-  senderName: string;
-  senderPhotoURL: string | null;
-  content: string;
-  type: 'text' | 'file' | 'system';
-  fileURL?: string;
-  fileName?: string;
-  fileType?: string;
-  isPinned: boolean;
-  createdAt: Date;
-}
-
-// --- Notifications ---
-// Only 'new_post' from followed societies triggers notifications per updated spec.
 export type NotificationType =
-  | 'new_post'          // followed society posted — PRIMARY notification type
+  | 'new_post'       
   | 'post_like'
   | 'post_comment'
   | 'society_followed'
@@ -225,7 +160,7 @@ export interface Notification {
   createdAt: Date;
 }
 
-// --- AI Chat ---
+// ─── AI Chat ──────────────────────────────────────────────────────────────────
 export interface AIMessage {
   id: string;
   role: 'user' | 'assistant';
