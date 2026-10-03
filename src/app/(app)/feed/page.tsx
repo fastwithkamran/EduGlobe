@@ -9,7 +9,7 @@ import {
   followSociety, unfollowSociety, getFollowedSocietyIds,
   deletePost,
 } from '@/lib/firestore';
-import type { Post, PostComment, PostType } from '@/types';
+import type { Post, PostComment, PostType, OpportunityMeta } from '@/types';
 import { sanitizeImageUrl } from '@/../lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -26,12 +26,22 @@ function getInitials(name: string): string {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
+/** Returns days until a deadline string, or null if no deadline */
+function daysUntil(dateStr?: string): number | null {
+  if (!dateStr) return null;
+  const diff = new Date(dateStr).getTime() - Date.now();
+  return Math.ceil(diff / 86400000);
+}
+
 const TYPE_COLOR: Record<PostType, string> = {
   announcement: 'rgba(96,165,250,0.15)',
   event:        'rgba(16,185,129,0.15)',
   achievement:  'rgba(251,191,36,0.15)',
   recruitment:  'rgba(139,92,246,0.15)',
   general:      'rgba(107,114,128,0.15)',
+  hackathon:    'rgba(249,115,22,0.15)',   // 🏆 orange
+  scholarship:  'rgba(20,184,166,0.15)',   // 🎓 teal
+  internship:   'rgba(168,85,247,0.15)',   // 💼 purple
 };
 const TYPE_TEXT: Record<PostType, string> = {
   announcement: '#60a5fa',
@@ -39,6 +49,19 @@ const TYPE_TEXT: Record<PostType, string> = {
   achievement:  '#fbbf24',
   recruitment:  '#a78bfa',
   general:      '#9ca3af',
+  hackathon:    '#f97316',
+  scholarship:  '#14b8a6',
+  internship:   '#a855f7',
+};
+const TYPE_EMOJI: Record<PostType, string> = {
+  announcement: '📢',
+  event:        '📅',
+  achievement:  '🏅',
+  recruitment:  '👥',
+  general:      '💬',
+  hackathon:    '🏆',
+  scholarship:  '🎓',
+  internship:   '💼',
 };
 
 // ─── Confirm Delete Modal ─────────────────────────────────────────────────────
@@ -109,6 +132,91 @@ function CommentThread({ postId }: { postId: string }) {
           <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) submit(); }} placeholder="Write a comment…" className="input" style={{ flex: 1, padding: '7px 12px', fontSize: 13 }} />
           <button className="btn btn-primary btn-sm" onClick={submit} disabled={sending || !text.trim()}>{sending ? '…' : 'Post'}</button>
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Opportunity metadata card ────────────────────────────────────────────────
+function OpportunityCard({ meta, type }: { meta: OpportunityMeta; type: PostType }) {
+  const days = daysUntil(meta.deadline);
+  const deadlineColor = days === null ? 'var(--text-muted)'
+    : days < 0   ? '#9ca3af'
+    : days <= 3  ? '#ef4444'
+    : days <= 7  ? '#f97316'
+    : '#10b981';
+
+  return (
+    <div style={{
+      marginTop: 12, padding: '14px 16px',
+      background: `${TYPE_COLOR[type]}`,
+      border: `1px solid ${TYPE_TEXT[type]}30`,
+      borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 10,
+    }}>
+      {/* Top row: deadline + prize */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
+        {meta.deadline && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: 13 }}>⏰</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: deadlineColor }}>
+              {days === null ? '' : days < 0 ? 'Deadline passed' : days === 0 ? 'Deadline TODAY' : `${days}d left`}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              · {new Date(meta.deadline).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+        )}
+        {meta.prize && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 13 }}>🏅</span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24' }}>{meta.prize}</span>
+          </div>
+        )}
+        {meta.location && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 12 }}>📍</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{meta.location}</span>
+          </div>
+        )}
+        {meta.country && meta.country !== meta.location && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 12 }}>🌍</span>
+            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{meta.country}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Skills */}
+      {meta.skills && meta.skills.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+          {meta.skills.map(s => (
+            <span key={s} style={{
+              fontSize: 11, padding: '2px 8px',
+              background: `${TYPE_TEXT[type]}18`,
+              color: TYPE_TEXT[type],
+              borderRadius: 999, fontWeight: 500,
+              border: `1px solid ${TYPE_TEXT[type]}30`,
+            }}>{s}</span>
+          ))}
+        </div>
+      )}
+
+      {/* Apply button */}
+      {meta.applyLink && (
+        <a
+          href={meta.applyLink} target="_blank" rel="noreferrer"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 16px', borderRadius: 8,
+            background: TYPE_TEXT[type], color: '#fff',
+            fontWeight: 700, fontSize: 13, textDecoration: 'none',
+            alignSelf: 'flex-start', transition: 'opacity .15s',
+          }}
+          onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
+          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+        >
+          🚀 Apply Now
+        </a>
       )}
     </div>
   );
@@ -219,7 +327,7 @@ function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdm
               <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span>{timeAgo(post.createdAt)}</span>
                 <span style={{ background: TYPE_COLOR[post.type], color: TYPE_TEXT[post.type], padding: '1px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500 }}>
-                  {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
+                  {TYPE_EMOJI[post.type]} {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
                 </span>
               </div>
             </div>
@@ -230,6 +338,11 @@ function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdm
         </div>
 
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, marginBottom: post.attachments.length > 0 ? 12 : 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>
+
+        {/* Opportunity metadata card — shown on hackathon / scholarship / internship posts */}
+        {post.opportunityMeta && (
+          <OpportunityCard meta={post.opportunityMeta} type={post.type} />
+        )}
 
         {/* Attachments */}
         {post.attachments.length > 0 && (

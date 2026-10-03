@@ -100,8 +100,28 @@ export interface MemberInvitation {
 }
 
 // --- Posts ---
-export type PostType = 'announcement' | 'event' | 'achievement' | 'recruitment' | 'general';
+export type PostType =
+  | 'announcement'
+  | 'event'
+  | 'achievement'
+  | 'recruitment'
+  | 'general'
+  | 'hackathon'      // 🏆 Competition / hackathon listing
+  | 'scholarship'    // 🎓 Scholarship opportunity
+  | 'internship';    // 💼 Internship / job opportunity
+
 export type PostVisibility = 'public' | 'members_only';
+
+/** Structured metadata for hackathon / scholarship / internship posts */
+export interface OpportunityMeta {
+  deadline?: string;        // ISO date string e.g. "2026-10-15"
+  prize?: string;           // e.g. "PKR 2.5M" or "USD 10,000"
+  location?: string;        // e.g. "Online" | "Karachi" | "Remote"
+  skills?: string[];        // e.g. ["Python", "ML", "Web Dev"]
+  applyLink?: string;       // Direct application URL
+  organizer?: string;       // e.g. "Google", "LUMS", "HEC"
+  country?: string;         // e.g. "Pakistan" | "Global"
+}
 
 export interface Post {
   id: string;
@@ -117,6 +137,7 @@ export interface Post {
   likeCount: number;
   commentCount: number;
   likedBy: string[];
+  opportunityMeta?: OpportunityMeta;  // Only present on hackathon/scholarship/internship posts
   createdAt: Date;
   updatedAt: Date;
 }

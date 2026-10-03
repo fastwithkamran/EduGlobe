@@ -4,13 +4,14 @@ import { useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { AIMessage } from '@/types';
 
-// ─── Quick prompt suggestions — EduGlobe context ─────────────────────────────
-
+// ─── Quick prompt suggestions — opportunity discovery focused ─────────────────
 const QUICK_PROMPTS = [
-  { label: '📢 Announce Post',   prompt: 'Help me write an engaging announcement post to share with students globally on EduGlobe' },
-  { label: '💡 Event Ideas',     prompt: 'Give me 5 creative academic event ideas for our institution that would interest students worldwide' },
-  { label: '📱 Social Caption',  prompt: 'Write 3 compelling captions for sharing our institution\'s latest achievement on EduGlobe' },
-  { label: '📈 Engagement Tips', prompt: 'How can our institution grow its following and increase post engagement on EduGlobe?' },
+  { label: '🏆 Hackathons in PK',   prompt: 'Find me active hackathons and competitions in Pakistan right now that students can join' },
+  { label: '🎓 Scholarships 2026',  prompt: 'List top scholarships available for Pakistani students in 2026, with deadlines and eligibility' },
+  { label: '💼 Internships',        prompt: 'What are the best internship opportunities for CS students in Pakistan right now?' },
+  { label: '🌐 Global Contests',    prompt: 'What global student competitions and hackathons are open to Pakistani students?' },
+  { label: '📢 Write Post',         prompt: 'Help me write an engaging announcement post for a hackathon on EduGlobe' },
+  { label: '📈 Grow Society',       prompt: 'How can our institute grow its student community on EduGlobe?' },
 ];
 
 function timeLabel(date: Date): string {
@@ -29,12 +30,12 @@ function renderContent(text: string) {
 }
 
 export default function AIPage() {
-  const { user, userProfile, loginWithGoogle } = useAuth();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: 'welcome',
       role: 'assistant',
-      content: `Hi! I'm EduGlobe's AI Assistant, powered by Gemini.\n\nI can help you draft **announcement posts**, generate **event ideas**, write **social media captions**, and much more.\n\nWhat would you like help with today?`,
+      content: `Hi! I'm EduGlobe's AI Assistant, powered by Gemini 🇵🇰\n\nI help Pakistani (and global) students discover **hackathons**, **scholarships**, **internships**, and **competitions** — so you never miss an opportunity again.\n\nWhat are you looking for today?`,
       timestamp: new Date(),
     },
   ]);
@@ -42,25 +43,6 @@ export default function AIPage() {
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-
-  // ─── Guest gate ────────────────────────────────────────────────────────────
-  if (!user) {
-    return (
-      <div style={{ padding: 'var(--page-padding-y) var(--page-padding-x)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
-        <div style={{ fontSize: 52, marginBottom: 16 }}>🤖</div>
-        <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: 20, fontWeight: 800, marginBottom: 8 }}>AI Assistant</h2>
-        <p style={{ color: 'var(--text-tertiary)', fontSize: 14, marginBottom: 24, maxWidth: 300, lineHeight: 1.6 }}>
-          Sign in to access the EduGlobe AI Assistant powered by Google Gemini.
-        </p>
-        <button
-          onClick={() => loginWithGoogle().catch(() => {})}
-          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 24px', background: 'var(--gradient-primary)', color: '#fff', border: 'none', borderRadius: 12, fontFamily: 'var(--font-body)', fontWeight: 600, fontSize: 14, cursor: 'pointer', boxShadow: '0 0 20px rgba(16,185,129,0.25)' }}
-        >
-          🔐 Sign in with Google
-        </button>
-      </div>
-    );
-  }
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
@@ -79,10 +61,15 @@ export default function AIPage() {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
 
     try {
-      // Call our Next.js API route which invokes Gemini server-side
+      // Attach Firebase ID token if the user is signed in
+      const token = user ? await user.getIdToken() : null;
+
       const res = await fetch('/api/ai', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           message: trimmed,
           history: messages
