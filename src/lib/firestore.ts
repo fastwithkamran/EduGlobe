@@ -11,6 +11,7 @@ import {
   increment, type QuerySnapshot, type Unsubscribe,
   startAfter, type QueryDocumentSnapshot,
 } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
 import type {
   UserProfile, Society, SocietyMember, Post, PostComment,
@@ -104,19 +105,22 @@ export async function uploadFile(
 export async function deleteFile(url: string): Promise<void> {
   if (!url || !url.includes('cloudinary.com')) return;
 
-  // Extract public_id from URL:
-  // https://res.cloudinary.com/{cloud}/image/upload/v{version}/{public_id}.{ext}
-  // public_id may contain slashes (folder path), so we grab everything after
-  // /upload/ (skipping the optional v{digits}/ version segment).
   const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^./]+)?$/);
   if (!match || !match[1]) return;
   const publicId = match[1];
 
   try {
+    // Attach the caller's Firebase ID token so the server can verify auth
+    const currentUser = getAuth().currentUser;
+    const token = currentUser ? await currentUser.getIdToken() : null;
+
     await fetch('/api/cloudinary/delete', {
       method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ publicId }),
+      headers: {
+        'Content-Type':  'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({ publicId }),
     });
   } catch (err) {
     // Best-effort: log but don't block the caller
