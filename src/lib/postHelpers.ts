@@ -59,5 +59,24 @@ export const POST_TYPE_OPTIONS: Array<{ value: PostType; label: string }> = [
   { value: 'internship',   label: '💼 Internship'   },
 ];
 
-/** Post types that carry opportunity metadata (deadline, apply link, etc.) */
+/** Emoji icon per post type */
+export const TYPE_EMOJI: Record<PostType, string> = {
+  announcement: '📢',
+  event:        '📅',
+  achievement:  '🏅',
+  recruitment:  '👥',
+  general:      '💬',
+  hackathon:    '💻',
+  scholarship:  '🎓',
+  internship:   '💼',
+};
+
+/** Days remaining until a deadline string, or null if not set.
+ *  Negative = past, 0 = today */
+export function daysUntil(dateStr?: string): number | null {
+  if (!dateStr) return null;
+  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);
+}
+
+/** Post types that carry opportunity metadata */
 export const OPPORTUNITY_TYPES: PostType[] = ['hackathon', 'scholarship', 'internship'];

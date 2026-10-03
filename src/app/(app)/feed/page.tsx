@@ -1,431 +1,98 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   subscribeToFeed, subscribeToFollowingFeed,
-  togglePostLike, subscribeToComments, addComment,
   followSociety, unfollowSociety, getFollowedSocietyIds,
-  deletePost,
 } from '@/lib/firestore';
-import type { Post, PostComment, PostType, OpportunityMeta } from '@/types';
-import { sanitizeImageUrl } from '@/lib/utils';
+import { TYPE_TEXTS } from '@/lib/postHelpers';
+import { PostCard }      from './_components/PostCard';
+import { FeedSkeleton }  from './_components/FeedSkeleton';
+import type { Post, PostType } from '@/types';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Constants ─────────────────────────────────────────────────────────────────
 
-function timeAgo(date: Date): string {
-  const s = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
-  return `${Math.floor(s / 86400)}d ago`;
-}
-
-function getInitials(name: string): string {
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
-
-/** Returns days until a deadline string, or null if no deadline */
-function daysUntil(dateStr?: string): number | null {
-  if (!dateStr) return null;
-  const diff = new Date(dateStr).getTime() - Date.now();
-  return Math.ceil(diff / 86400000);
-}
-
-const TYPE_COLOR: Record<PostType, string> = {
-  announcement: 'rgba(96,165,250,0.15)',
-  event:        'rgba(16,185,129,0.15)',
-  achievement:  'rgba(251,191,36,0.15)',
-  recruitment:  'rgba(139,92,246,0.15)',
-  general:      'rgba(107,114,128,0.15)',
-  hackathon:    'rgba(249,115,22,0.15)',   // 🏆 orange
-  scholarship:  'rgba(20,184,166,0.15)',   // 🎓 teal
-  internship:   'rgba(168,85,247,0.15)',   // 💼 purple
-};
-const TYPE_TEXT: Record<PostType, string> = {
-  announcement: '#60a5fa',
-  event:        '#10b981',
-  achievement:  '#fbbf24',
-  recruitment:  '#a78bfa',
-  general:      '#9ca3af',
-  hackathon:    '#f97316',
-  scholarship:  '#14b8a6',
-  internship:   '#a855f7',
-};
-const TYPE_EMOJI: Record<PostType, string> = {
-  announcement: '📢',
-  event:        '📅',
-  achievement:  '🏅',
-  recruitment:  '👥',
-  general:      '💬',
-  hackathon:    '🏆',
-  scholarship:  '🎓',
-  internship:   '💼',
-};
-
-// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
-
-function ConfirmDeleteModal({ message, onConfirm, onCancel, loading }: {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading?: boolean;
-}) {
-  return (
-    <div onClick={onCancel} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div onClick={e => e.stopPropagation()} style={{ background: 'var(--bg-secondary)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 16, padding: '28px 24px', width: 400, maxWidth: '90vw' }}>
-        <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 16px' }}>🗑️</div>
-        <h2 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-heading)', fontWeight: 800, textAlign: 'center', marginBottom: 8 }}>Delete Post?</h2>
-        <p style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.6, marginBottom: 24 }}>{message}<br /><strong style={{ color: '#ef4444' }}>This action cannot be undone.</strong></p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-          <button className="btn btn-outline" onClick={onCancel} disabled={loading} style={{ minWidth: 90 }}>Cancel</button>
-          <button disabled={loading} onClick={onConfirm} style={{ minWidth: 120, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 18px', background: loading ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', border: 'none', borderRadius: 'var(--radius-lg)', fontWeight: 600, fontSize: 13, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)' }}>
-            {loading ? '⏳ Deleting…' : '🗑️ Delete'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Comment Thread ────────────────────────────────────────────────────────────
-
-function CommentThread({ postId }: { postId: string }) {
-  const { user, userProfile } = useAuth();
-  const [comments, setComments] = useState<PostComment[]>([]);
-  const [text, setText] = useState('');
-  const [sending, setSending] = useState(false);
-  const unsubRef = useRef<(() => void) | null>(null);
-
-  useEffect(() => {
-    unsubRef.current = subscribeToComments(postId, setComments);
-    return () => unsubRef.current?.();
-  }, [postId]);
-
-  const submit = async () => {
-    if (!text.trim() || !user || !userProfile) return;
-    setSending(true);
-    try {
-      await addComment(postId, { postId, authorId: user.uid, authorName: userProfile.displayName, authorPhotoURL: userProfile.photoURL, content: text.trim() });
-      setText('');
-    } catch { toast.error('Failed to post comment'); }
-    finally { setSending(false); }
-  };
-
-  return (
-    <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-secondary)' }}>
-      {comments.length === 0 && <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>No comments yet — be the first!</p>}
-      {comments.map(c => (
-        <div key={c.id} style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
-            {c.authorPhotoURL ? <img src={sanitizeImageUrl(c.authorPhotoURL)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : getInitials(c.authorName)}
-          </div>
-          <div style={{ background: 'var(--bg-tertiary)', borderRadius: '0 12px 12px 12px', padding: '8px 12px', flex: 1 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{c.authorName}</div>
-            <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{c.content}</div>
-          </div>
-        </div>
-      ))}
-      {user && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) submit(); }} placeholder="Write a comment…" className="input" style={{ flex: 1, padding: '7px 12px', fontSize: 13 }} />
-          <button className="btn btn-primary btn-sm" onClick={submit} disabled={sending || !text.trim()}>{sending ? '…' : 'Post'}</button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Opportunity metadata card ────────────────────────────────────────────────
-function OpportunityCard({ meta, type }: { meta: OpportunityMeta; type: PostType }) {
-  const days = daysUntil(meta.deadline);
-  const deadlineColor = days === null ? 'var(--text-muted)'
-    : days < 0   ? '#9ca3af'
-    : days <= 3  ? '#ef4444'
-    : days <= 7  ? '#f97316'
-    : '#10b981';
-
-  return (
-    <div style={{
-      marginTop: 12, padding: '14px 16px',
-      background: `${TYPE_COLOR[type]}`,
-      border: `1px solid ${TYPE_TEXT[type]}30`,
-      borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 10,
-    }}>
-      {/* Top row: deadline + prize */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-        {meta.deadline && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: 13 }}>⏰</span>
-            <span style={{ fontSize: 12, fontWeight: 600, color: deadlineColor }}>
-              {days === null ? '' : days < 0 ? 'Deadline passed' : days === 0 ? 'Deadline TODAY' : `${days}d left`}
-            </span>
-            <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              · {new Date(meta.deadline).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
-            </span>
-          </div>
-        )}
-        {meta.prize && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ fontSize: 13 }}>🏅</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: '#fbbf24' }}>{meta.prize}</span>
-          </div>
-        )}
-        {meta.location && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ fontSize: 12 }}>📍</span>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{meta.location}</span>
-          </div>
-        )}
-        {meta.country && meta.country !== meta.location && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ fontSize: 12 }}>🌍</span>
-            <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{meta.country}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Skills */}
-      {meta.skills && meta.skills.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {meta.skills.map(s => (
-            <span key={s} style={{
-              fontSize: 11, padding: '2px 8px',
-              background: `${TYPE_TEXT[type]}18`,
-              color: TYPE_TEXT[type],
-              borderRadius: 999, fontWeight: 500,
-              border: `1px solid ${TYPE_TEXT[type]}30`,
-            }}>{s}</span>
-          ))}
-        </div>
-      )}
-
-      {/* Apply button */}
-      {meta.applyLink && (
-        <a
-          href={meta.applyLink} target="_blank" rel="noreferrer"
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '8px 16px', borderRadius: 8,
-            background: TYPE_TEXT[type], color: '#fff',
-            fontWeight: 700, fontSize: 13, textDecoration: 'none',
-            alignSelf: 'flex-start', transition: 'opacity .15s',
-          }}
-          onMouseEnter={e => (e.currentTarget.style.opacity = '0.85')}
-          onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-        >
-          🚀 Apply Now
-        </a>
-      )}
-    </div>
-  );
-}
-
-// ─── Image with skeleton loading ─────────────────────────────────────────────
-function ImageWithSkeleton({ src, alt }: { src: string; alt: string }) {
-  const [loaded, setLoaded] = useState(false);
-  return (
-    <a href={src} target="_blank" rel="noreferrer"
-      style={{ borderRadius: 8, overflow: 'hidden', display: 'block', maxWidth: 280, border: '1px solid var(--border-primary)', position: 'relative', minHeight: 80 }}>
-      {/* Shimmer shown until image loads */}
-      {!loaded && (
-        <div style={{ position: 'absolute', inset: 0, background: 'var(--bg-tertiary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-      )}
-      <img
-        src={src} alt={alt}
-        onLoad={() => setLoaded(true)}
-        style={{ width: '100%', height: 'auto', display: 'block', opacity: loaded ? 1 : 0, transition: 'opacity .3s' }}
-      />
-    </a>
-  );
-}
-
-// ─── Post Card ────────────────────────────────────────────────────────────────
-
-function PostCard({ post, currentUserId, followedIds, onFollowToggle, isSuperAdmin }: {
-  post: Post;
-  currentUserId?: string;
-  followedIds: Set<string>;
-  onFollowToggle: (sid: string, following: boolean) => void;
-  isSuperAdmin: boolean;
-}) {
-  const [showComments, setShowComments] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  // Optimistic like state — null = use server data
-  const [localLiked, setLocalLiked] = useState<boolean | null>(null);
-  const [localCount, setLocalCount] = useState<number | null>(null);
-
-  const serverLiked = currentUserId ? post.likedBy.includes(currentUserId) : false;
-  const isLiked   = localLiked !== null ? localLiked : serverLiked;
-  const likeCount = localCount !== null ? localCount : post.likeCount;
-  const isFollowing = followedIds.has(post.societyId);
-
-  const handleLike = async () => {
-    if (!currentUserId) return toast.error('Sign in to like posts');
-    const wasLiked  = isLiked;
-    const prevCount = likeCount;
-    // Instant optimistic flip
-    setLocalLiked(!wasLiked);
-    setLocalCount(prevCount + (wasLiked ? -1 : 1));
-    try {
-      await togglePostLike(post.id, currentUserId, !wasLiked);
-      setLocalLiked(null); setLocalCount(null); // server now owns state
-    } catch {
-      setLocalLiked(wasLiked); setLocalCount(prevCount); // revert
-      toast.error('Failed to like post');
-    }
-  };
-
-  const handleFollow = async () => {
-    if (!currentUserId) return toast.error('Sign in to follow societies');
-    try {
-      if (isFollowing) {
-        await unfollowSociety(currentUserId, post.societyId);
-        onFollowToggle(post.societyId, false);
-        toast.success(`Unfollowed ${post.societyName}`);
-      } else {
-        await followSociety(currentUserId, post.societyId);
-        onFollowToggle(post.societyId, true);
-        toast.success(`Following ${post.societyName}!`);
-      }
-    } catch { toast.error('Failed to update follow'); }
-  };
-
-  const handleDeleteConfirmed = async () => {
-    setDeleting(true);
-    try { await deletePost(post.id); toast.success('Post deleted'); setConfirmDelete(false); }
-    catch { toast.error('Failed to delete post'); }
-    finally { setDeleting(false); }
-  };
-
-  return (
-    <>
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-xl)', padding: 20, marginBottom: 14, position: 'relative', transition: 'border-color .2s' }}>
-
-        {/* Super-admin delete */}
-        {isSuperAdmin && (
-          <button
-            onClick={() => setConfirmDelete(true)}
-            title="Super Admin: Delete this post"
-            style={{ position: 'absolute', top: 12, right: 12, width: 30, height: 30, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s', zIndex: 1 }}
-            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.22)'; (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1.1)'; }}
-            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239,68,68,0.1)'; (e.currentTarget as HTMLButtonElement).style.transform = 'scale(1)'; }}
-          >🗑️</button>
-        )}
-
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12, paddingRight: isSuperAdmin ? 44 : 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#fff', overflow: 'hidden', flexShrink: 0 }}>
-              {post.societyLogoURL ? <img src={sanitizeImageUrl(post.societyLogoURL)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="" /> : getInitials(post.societyName)}
-            </div>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{post.societyName}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-tertiary)', display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span>{timeAgo(post.createdAt)}</span>
-                <span style={{ background: TYPE_COLOR[post.type], color: TYPE_TEXT[post.type], padding: '1px 8px', borderRadius: 999, fontSize: 11, fontWeight: 500 }}>
-                  {TYPE_EMOJI[post.type]} {post.type.charAt(0).toUpperCase() + post.type.slice(1)}
-                </span>
-              </div>
-            </div>
-          </div>
-          <button className={`btn btn-sm ${isFollowing ? 'btn-outline' : 'btn-primary'}`} onClick={handleFollow} style={{ flexShrink: 0 }}>
-            {isFollowing ? '✓ Following' : '+ Follow'}
-          </button>
-        </div>
-
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.75, marginBottom: post.attachments.length > 0 ? 12 : 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{post.content}</p>
-
-        {/* Opportunity metadata card — shown on hackathon / scholarship / internship posts */}
-        {post.opportunityMeta && (
-          <OpportunityCard meta={post.opportunityMeta} type={post.type} />
-        )}
-
-        {/* Attachments */}
-        {post.attachments.length > 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}>
-            {post.attachments.map(att => {
-              const isImg = att.fileType.startsWith('image/');
-              return isImg ? (
-                <ImageWithSkeleton key={att.id} src={sanitizeImageUrl(att.fileURL)} alt={att.fileName} />
-              ) : (
-                <a key={att.id} href={sanitizeImageUrl(att.fileURL)} target="_blank" rel="noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '7px 12px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-primary)', borderRadius: 8, textDecoration: 'none', color: 'var(--text-secondary)', fontSize: 12 }}>
-                  📎 {att.fileName}
-                </a>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 8, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-secondary)' }}>
-          <button onClick={handleLike} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: isLiked ? '#ef4444' : 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px', borderRadius: 8, transition: 'all .15s', transform: isLiked ? 'scale(1.08)' : 'scale(1)' }}>
-            {isLiked ? '♥' : '♡'} {likeCount}
-          </button>
-          <button onClick={() => setShowComments(v => !v)} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: showComments ? 'var(--primary-400)' : 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px', borderRadius: 8, transition: 'all .15s' }}>
-            💬 {post.commentCount}
-          </button>
-          <button onClick={() => { navigator.clipboard?.writeText(window.location.href); toast.success('Link copied!'); }} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 13, color: 'var(--text-tertiary)', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 10px', borderRadius: 8, transition: 'all .15s' }}>
-            ↗ Share
-          </button>
-        </div>
-
-        {showComments && <CommentThread postId={post.id} />}
-      </div>
-
-      {confirmDelete && (
-        <ConfirmDeleteModal
-          message={`Delete this post by "${post.societyName}"?`}
-          onConfirm={handleDeleteConfirmed}
-          onCancel={() => setConfirmDelete(false)}
-          loading={deleting}
-        />
-      )}
-    </>
-  );
-}
-
-// ─── Main Feed Page ────────────────────────────────────────────────────────────
-// Tabs: "All Posts" (global) | "Following" (followed societies only)
-// "My Society" tab has been removed per updated spec.
+const PAGE_SIZE      = 15;
+const PAGE_INCREMENT = 15;
 
 type FeedTab = 'all' | 'following';
 
+const TYPE_FILTERS: Array<{ value: PostType | 'all'; label: string }> = [
+  { value: 'all',          label: '✨ All'          },
+  { value: 'hackathon',    label: '💻 Hackathons'   },
+  { value: 'scholarship',  label: '🎓 Scholarships' },
+  { value: 'internship',   label: '💼 Internships'  },
+  { value: 'announcement', label: '📢 Announcements'},
+  { value: 'event',        label: '📅 Events'       },
+  { value: 'achievement',  label: '🏆 Achievements' },
+];
+
+// ─── Page ──────────────────────────────────────────────────────────────────────
+
 export default function GlobalFeedPage() {
   const { user, isSuperAdmin } = useAuth();
-  const [allPosts, setAllPosts] = useState<Post[]>([]);
-  const [followingPosts, setFollowingPosts] = useState<Post[]>([]);
-  const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
-  const [tab, setTab] = useState<FeedTab>('all');
-  const [loadingAll, setLoadingAll] = useState(true);
-  const [followingLoaded, setFollowingLoaded] = useState(false);
 
-  const allUnsubRef  = useRef<(() => void) | null>(null);
+  const [tab,            setTab]            = useState<FeedTab>('all');
+  const [loadingAll,     setLoadingAll]     = useState(true);
+  const [followingLoaded,setFollowingLoaded]= useState(false);
+  const [followedIds,    setFollowedIds]    = useState<Set<string>>(new Set());
+  const [pageSize,       setPageSize]       = useState(PAGE_SIZE);
+  const [loadingMore,    setLoadingMore]    = useState(false);
+
+  // All posts from subscription (may include unseen new arrivals)
+  const [allLivePosts,       setAllLivePosts]       = useState<Post[]>([]);
+  const [followingLivePosts, setFollowingLivePosts] = useState<Post[]>([]);
+
+  // What the user actually sees — held back when new posts arrive mid-scroll
+  const [displayedAll,       setDisplayedAll]       = useState<Post[]>([]);
+  const [displayedFollowing, setDisplayedFollowing] = useState<Post[]>([]);
+
+  // Track IDs the user has already seen (to detect new arrivals)
+  const seenAllIds       = useRef<Set<string>>(new Set());
+  const seenFollowingIds = useRef<Set<string>>(new Set());
+  const isInitAllRef     = useRef(true);
+  const isInitFollowRef  = useRef(true);
+
+  const allUnsubRef    = useRef<(() => void) | null>(null);
   const followUnsubRef = useRef<(() => void) | null>(null);
 
-  // Subscribe to global public feed
-  useEffect(() => {
-    allUnsubRef.current = subscribeToFeed(posts => {
-      setAllPosts(posts);
-      setLoadingAll(false);
-    });
-    return () => allUnsubRef.current?.();
-  }, []);
+  // Search + type filter
+  const [search,     setSearch]     = useState('');
+  const [typeFilter, setTypeFilter] = useState<PostType | 'all'>('all');
 
-  // Load followed IDs first, then subscribe to their posts
+  // ── Global feed subscription (re-subscribes on pageSize change) ──────────────
+  useEffect(() => {
+    isInitAllRef.current = true;
+    allUnsubRef.current?.();
+    allUnsubRef.current = subscribeToFeed(incoming => {
+      setAllLivePosts(incoming);
+      if (isInitAllRef.current) {
+        isInitAllRef.current = false;
+        incoming.forEach(p => seenAllIds.current.add(p.id));
+        setDisplayedAll(incoming);
+        setLoadingAll(false);
+        setLoadingMore(false);
+      }
+    }, pageSize);
+    return () => allUnsubRef.current?.();
+  }, [pageSize]);
+
+  // ── Following feed ───────────────────────────────────────────────────────────
   useEffect(() => {
     if (!user?.uid) return;
     getFollowedSocietyIds(user.uid).then(ids => {
-      const idSet = new Set(ids);
-      setFollowedIds(idSet);
-
+      setFollowedIds(new Set(ids));
       followUnsubRef.current?.();
-      const unsub = subscribeToFollowingFeed(ids, posts => {
-        setFollowingPosts(posts);
-        setFollowingLoaded(true);
+      isInitFollowRef.current = true;
+      const unsub = subscribeToFollowingFeed(ids, incoming => {
+        setFollowingLivePosts(incoming);
+        if (isInitFollowRef.current) {
+          isInitFollowRef.current = false;
+          incoming.forEach(p => seenFollowingIds.current.add(p.id));
+          setDisplayedFollowing(incoming);
+          setFollowingLoaded(true);
+        }
       });
       if (unsub) followUnsubRef.current = unsub;
       else setFollowingLoaded(true);
@@ -433,40 +100,67 @@ export default function GlobalFeedPage() {
     return () => followUnsubRef.current?.();
   }, [user?.uid]);
 
-  const handleFollowToggle = (societyId: string, following: boolean) => {
+  // ── New post counts (posts arrived since last user action) ───────────────────
+  const pendingAllCount = allLivePosts.filter(p => !seenAllIds.current.has(p.id)).length;
+  const pendingFollowCount = followingLivePosts.filter(p => !seenFollowingIds.current.has(p.id)).length;
+  const pendingCount = tab === 'all' ? pendingAllCount : pendingFollowCount;
+
+  const showNewPosts = () => {
+    if (tab === 'all') {
+      allLivePosts.forEach(p => seenAllIds.current.add(p.id));
+      setDisplayedAll(allLivePosts);
+    } else {
+      followingLivePosts.forEach(p => seenFollowingIds.current.add(p.id));
+      setDisplayedFollowing(followingLivePosts);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // ── Follow toggle ────────────────────────────────────────────────────────────
+  const handleFollowToggle = useCallback((societyId: string, following: boolean) => {
     setFollowedIds(prev => {
       const next = new Set(prev);
       following ? next.add(societyId) : next.delete(societyId);
       return next;
     });
-    // Re-subscribe to following feed with updated IDs
     if (user?.uid) {
       getFollowedSocietyIds(user.uid).then(ids => {
         followUnsubRef.current?.();
-        const unsub = subscribeToFollowingFeed(ids, setFollowingPosts);
+        isInitFollowRef.current = true;
+        const unsub = subscribeToFollowingFeed(ids, incoming => {
+          setFollowingLivePosts(incoming);
+          if (isInitFollowRef.current) {
+            isInitFollowRef.current = false;
+            incoming.forEach(p => seenFollowingIds.current.add(p.id));
+            setDisplayedFollowing(incoming);
+          }
+        });
         if (unsub) followUnsubRef.current = unsub;
       });
     }
-  };
+  }, [user?.uid]);
 
-  const currentPosts = tab === 'all' ? allPosts : followingPosts;
+  // ── Derived data ─────────────────────────────────────────────────────────────
+  const currentDisplayed = tab === 'all' ? displayedAll : displayedFollowing;
   const isLoading = tab === 'all' ? loadingAll : !followingLoaded;
+  const hasMore   = tab === 'all' && allLivePosts.length === pageSize; // only page global feed
 
-  // ─── Search / filter ───────────────────────────────────────────────────────
-  const [search, setSearch] = useState('');
-  const filteredPosts = search.trim()
-    ? currentPosts.filter(p =>
-        p.societyName.toLowerCase().includes(search.toLowerCase()) ||
-        p.content.toLowerCase().includes(search.toLowerCase())
-      )
-    : currentPosts;
+  const filteredPosts = currentDisplayed
+    .filter(p => typeFilter === 'all' || p.type === typeFilter)
+    .filter(p => !search.trim() || (
+      p.societyName.toLowerCase().includes(search.toLowerCase()) ||
+      p.content.toLowerCase().includes(search.toLowerCase())
+    ));
 
   return (
     <>
+      {/* ── Header ── */}
       <div style={{ padding: 'var(--page-padding-y) var(--page-padding-x) 0' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, marginBottom: 4 }}>🌐 Global Learning Feed</h1>
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
+              🌐 Global Learning Feed
+            </h1>
             <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
               Discover posts from institutes around the world
               {isSuperAdmin && (
@@ -476,6 +170,7 @@ export default function GlobalFeedPage() {
               )}
             </p>
           </div>
+
           {/* Search bar */}
           <div style={{ position: 'relative', minWidth: 220 }}>
             <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: 14, pointerEvents: 'none' }}>🔍</span>
@@ -487,12 +182,12 @@ export default function GlobalFeedPage() {
               style={{ paddingLeft: 32, fontSize: 13, width: '100%' }}
             />
             {search && (
-              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+              <button onClick={() => setSearch('')} style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 16 }}>×</button>
             )}
           </div>
         </div>
 
-        {/* Tabs — only All Posts and Following */}
+        {/* Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid var(--border-primary)' }}>
           {(['all', 'following'] as FeedTab[]).map(t => (
             <button key={t} onClick={() => setTab(t)} style={{
@@ -511,50 +206,83 @@ export default function GlobalFeedPage() {
             </button>
           ))}
         </div>
+
+        {/* Type filter chips */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '12px 0 4px' }}>
+          {TYPE_FILTERS.map(({ value, label }) => {
+            const active = typeFilter === value;
+            const color  = value !== 'all' ? TYPE_TEXTS[value as PostType] : 'var(--primary-400)';
+            return (
+              <button
+                key={value}
+                onClick={() => setTypeFilter(value)}
+                style={{
+                  padding: '4px 12px', borderRadius: 999, fontSize: 12, cursor: 'pointer',
+                  border: '1px solid',
+                  borderColor: active ? color : 'var(--border-primary)',
+                  background: active ? `${color}18` : 'transparent',
+                  color: active ? color : 'var(--text-tertiary)',
+                  fontWeight: active ? 600 : 400,
+                  transition: 'all .15s',
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <div style={{ padding: '20px var(--page-padding-x)', flex: 1, overflowY: 'auto' }}>
+      {/* ── New posts badge ── */}
+      {pendingCount > 0 && (
+        <div style={{ position: 'sticky', top: 8, zIndex: 40, display: 'flex', justifyContent: 'center', pointerEvents: 'none' }}>
+          <button
+            onClick={showNewPosts}
+            style={{
+              pointerEvents: 'auto',
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '8px 18px', borderRadius: 999,
+              background: 'var(--gradient-primary)', color: '#fff',
+              border: 'none', fontWeight: 600, fontSize: 13,
+              cursor: 'pointer', boxShadow: '0 4px 20px rgba(0,0,0,0.35)',
+              animation: 'pulse 2s ease-in-out infinite',
+            }}
+          >
+            ⬆ {pendingCount} new post{pendingCount !== 1 ? 's' : ''} — tap to show
+          </button>
+        </div>
+      )}
+
+      {/* ── Content ── */}
+      <div style={{ padding: '16px var(--page-padding-x)', flex: 1, overflowY: 'auto' }}>
         {isLoading ? (
-          // ── Skeleton cards ──────────────────────────────────────────────────
-          <div>
-            {[1, 2, 3].map(i => (
-              <div key={i} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-xl)', padding: 20, marginBottom: 14 }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 14 }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--bg-tertiary)', animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ height: 12, width: '40%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                    <div style={{ height: 10, width: '25%', background: 'var(--bg-tertiary)', borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                  </div>
-                </div>
-                <div style={{ height: 12, background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                <div style={{ height: 12, width: '80%', background: 'var(--bg-tertiary)', borderRadius: 6, marginBottom: 8, animation: 'pulse 1.5s ease-in-out infinite' }} />
-                <div style={{ height: 12, width: '60%', background: 'var(--bg-tertiary)', borderRadius: 6, animation: 'pulse 1.5s ease-in-out infinite' }} />
-              </div>
-            ))}
-          </div>
+          <FeedSkeleton />
         ) : filteredPosts.length === 0 ? (
-          // ── Empty / no-results state ────────────────────────────────────────
+          // Empty / no results
           <div style={{ textAlign: 'center', padding: '80px 24px' }}>
             <div style={{ fontSize: 52, marginBottom: 16, filter: 'grayscale(0.2)' }}>
               {search ? '🔍' : tab === 'following' ? '🔔' : '📭'}
             </div>
             <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8, fontFamily: 'var(--font-heading)' }}>
-              {search ? 'No matches found' : tab === 'following' ? 'Your feed is quiet' : 'No posts yet'}
+              {search ? 'No matches found' : tab === 'following' ? 'Your feed is quiet' : typeFilter !== 'all' ? `No ${typeFilter}s yet` : 'No posts yet'}
             </div>
             <p style={{ fontSize: 13, color: 'var(--text-tertiary)', maxWidth: 320, margin: '0 auto 24px', lineHeight: 1.7 }}>
               {search
-                ? `No posts or institutes match "${search}". Try a different search term.`
+                ? `No posts or institutes match "${search}".`
                 : tab === 'following'
                   ? 'Follow institutes from the All Posts tab to see their updates here.'
-                  : "Institutes haven't posted yet. Check back soon or explore societies."}
+                  : typeFilter !== 'all'
+                    ? 'No posts of this type have been published yet.'
+                    : "Institutes haven't posted yet. Check back soon."}
             </p>
-            {search ? (
-              <button className="btn btn-outline btn-sm" onClick={() => setSearch('')}>✕ Clear Search</button>
-            ) : tab === 'following' ? (
-              <button className="btn btn-primary btn-sm" onClick={() => setTab('all')}>🌐 Browse All Posts</button>
-            ) : (
-              <a href="/societies" className="btn btn-outline btn-sm">🏛️ Explore Institutes</a>
-            )}
+            {search
+              ? <button className="btn btn-outline btn-sm" onClick={() => setSearch('')}>✕ Clear Search</button>
+              : typeFilter !== 'all'
+                ? <button className="btn btn-outline btn-sm" onClick={() => setTypeFilter('all')}>✕ Show All Types</button>
+                : tab === 'following'
+                  ? <button className="btn btn-primary btn-sm" onClick={() => setTab('all')}>🌐 Browse All Posts</button>
+                  : <a href="/societies" className="btn btn-outline btn-sm">🏛️ Explore Institutes</a>
+            }
           </div>
         ) : (
           <>
@@ -568,14 +296,30 @@ export default function GlobalFeedPage() {
                 isSuperAdmin={isSuperAdmin}
               />
             ))}
+
+            {/* Load More */}
+            {hasMore && typeFilter === 'all' && !search && (
+              <div style={{ textAlign: 'center', marginTop: 8, marginBottom: 16 }}>
+                <button
+                  className="btn btn-outline btn-sm"
+                  disabled={loadingMore}
+                  onClick={() => { setLoadingMore(true); setPageSize(p => p + PAGE_INCREMENT); }}
+                >
+                  {loadingMore ? 'Loading…' : 'Load More Posts'}
+                </button>
+              </div>
+            )}
+
             {/* End-of-feed indicator */}
-            <div style={{ textAlign: 'center', padding: '28px 0 8px', color: 'var(--text-muted)', fontSize: 12, borderTop: '1px solid var(--border-secondary)', marginTop: 8 }}>
-              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ width: 20, height: 1, background: 'var(--border-secondary)', display: 'inline-block' }} />
-                {filteredPosts.length} post{filteredPosts.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ' · You\'re all caught up'}
-                <span style={{ width: 20, height: 1, background: 'var(--border-secondary)', display: 'inline-block' }} />
-              </span>
-            </div>
+            {(!hasMore || typeFilter !== 'all' || search) && (
+              <div style={{ textAlign: 'center', padding: '28px 0 8px', color: 'var(--text-muted)', fontSize: 12, borderTop: '1px solid var(--border-secondary)', marginTop: 8 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span style={{ width: 20, height: 1, background: 'var(--border-secondary)', display: 'inline-block' }} />
+                  {filteredPosts.length} post{filteredPosts.length !== 1 ? 's' : ''}{search ? ` matching "${search}"` : ' · You\'re all caught up'}
+                  <span style={{ width: 20, height: 1, background: 'var(--border-secondary)', display: 'inline-block' }} />
+                </span>
+              </div>
+            )}
           </>
         )}
       </div>
