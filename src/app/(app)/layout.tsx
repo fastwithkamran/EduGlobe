@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { subscribeToNotifications } from '@/lib/firestore';
 import type { Notification } from '@/types';
 import { useIsMobile } from '../../../hooks/use-mobile';
-import { sanitizeImageUrl } from '@/../lib/utils';
+import { sanitizeImageUrl } from '@/lib/utils';
 
 const NAV_ITEMS = [
   {

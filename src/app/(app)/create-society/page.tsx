@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { createSociety, uploadFile } from '@/lib/firestore';
 import type { SocietyCategory, SocietyPrivacy } from '@/types';
-import { sanitizeImageUrl } from '@/../lib/utils';
+import { sanitizeImageUrl } from '@/lib/utils';
 
 export default function CreateSocietyPage() {
   const router = useRouter();

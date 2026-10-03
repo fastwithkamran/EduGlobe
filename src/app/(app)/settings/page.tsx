@@ -6,7 +6,7 @@ import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 
 import { auth } from '@/lib/firebase';
 import { updateUserProfile, uploadFile, deleteFile } from '@/lib/firestore';
 import { useAuth } from '@/contexts/AuthContext';
-import { sanitizeImageUrl } from '@/../lib/utils';
+import { sanitizeImageUrl } from '@/lib/utils';
 
 export default function SettingsPage() {
   const { user, userProfile, refreshUserProfile } = useAuth();

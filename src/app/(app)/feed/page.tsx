@@ -10,7 +10,7 @@ import {
   deletePost,
 } from '@/lib/firestore';
 import type { Post, PostComment, PostType, OpportunityMeta } from '@/types';
-import { sanitizeImageUrl } from '@/../lib/utils';
+import { sanitizeImageUrl } from '@/lib/utils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

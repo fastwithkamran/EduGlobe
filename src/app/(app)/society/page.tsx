@@ -12,7 +12,7 @@ import {
 import type {
   Society, Post, PostComment, PostAttachment, PostType,
 } from '@/types';
-import { sanitizeImageUrl } from '@/../lib/utils';
+import { sanitizeImageUrl } from '@/lib/utils';
  
 // ─── Helpers ──────────────────────────────────────────────────────────────────
  
