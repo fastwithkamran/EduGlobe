@@ -12,9 +12,9 @@ import { generateAIStream, type ChatMessage } from '@/lib/gemini';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const MAX_MESSAGE_CHARS = 1_000;
-const MAX_HISTORY_MSGS  = 10;     // last N messages sent to Gemini
-const RATE_LIMIT        = 20;     // requests per window (all users)
-const RATE_WINDOW_MS    = 60_000; // 1 minute
+const MAX_HISTORY_MSGS  = 10;                  // last N messages sent to Gemini
+const RATE_LIMIT        = 10;                  // requests per day per IP
+const RATE_WINDOW_MS    = 24 * 60 * 60_000;   // 24 hours
 
 // ─── In-Memory Rate Limiter (IP-based) ────────────────────────────────────────
 const rateLimitMap = new Map<string, { count: number; reset: number }>();

@@ -86,7 +86,7 @@ export async function* generateAIStream(
   }
   try {
     const streamResult = await chat.sendMessageStream(userMessage);
-    for await (const chunk of streamResult) {
+    for await (const chunk of streamResult.stream) {
       const text = chunk.text();
       if (text) yield text;
     }
