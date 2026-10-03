@@ -127,7 +127,8 @@ export default function SettingsPage() {
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
     setTheme(next);
-    document.documentElement.dataset.theme = next;
+    if (next === 'light') document.documentElement.dataset.theme = 'light';
+    else delete document.documentElement.dataset.theme;
     localStorage.setItem('eduglobe-theme', next);
   };
 
