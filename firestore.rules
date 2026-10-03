@@ -1,23 +1,8 @@
-// firestore.rules
-// Deploy: firebase deploy --only firestore:rules
-//
-// Key design decisions:
-//  1. isSuperAdmin() checks request.auth.token.email — server-verified, cannot be spoofed.
-//  2. /members create allows role=='owner' for the society-creation bootstrap case:
-//     when a user creates a society they have no societyId yet, so isAdminOfSociety() fails.
-//     The role=='owner' check covers that first-write-only scenario.
-//  3. /societies read allows public societies without auth; private societies require auth.
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─── Helper functions ──────────────────────────────────────────────────────
-
-    function isSuperAdmin() {
-      return request.auth != null
-          && request.auth.token.email == 'thekamranayaz.92@gmail.com';
-    }
+    // ─── Helpers ───────────────────────────────────────────────────────────────
 
     function isAuth() {
       return request.auth != null;
@@ -31,9 +16,14 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Returns true if the current user is an admin/super_admin of the given society.
-    // NOTE: This requires the user's Firestore profile to have role + societyId already set.
-    // Do NOT call this during society-creation bootstrap (see /members create below).
+    // Super admin role is set directly on the Firestore user doc (role: "super_admin").
+    // No email is hardcoded here — grant access via the Firestore console.
+    function isSuperAdmin() {
+      return isAuth() && getUserData().role == 'super_admin';
+    }
+
+    // True when the signed-in user is an admin/owner of the given society.
+    // Do NOT call this during society-creation bootstrap (societyId not yet set on profile).
     function isAdminOfSociety(societyId) {
       let u = getUserData();
       return u.role in ['admin', 'super_admin'] && u.societyId == societyId;
@@ -51,9 +41,7 @@ service cloud.firestore {
     // ─── Societies ─────────────────────────────────────────────────────────────
 
     match /societies/{societyId} {
-      // Public societies are readable by anyone; private ones require sign-in.
       allow read:   if resource.data.privacy == 'public' || isAuth();
-      // Any authenticated user can create a society (they become the owner).
       allow create: if isAuth();
       allow update: if isAuth() && (isAdminOfSociety(societyId) || isSuperAdmin());
       allow delete: if isSuperAdmin();
@@ -63,20 +51,13 @@ service cloud.firestore {
 
     match /members/{memberId} {
       allow read: if isAuth();
-
-      // Bootstrap case: when creating a society, the creator writes their own member
-      // document with role == 'owner' before their UserProfile has a societyId set.
-      // isAdminOfSociety() would fail here because societyId isn't in the profile yet.
-      // We allow it when the new doc's role is 'owner' and the userId matches the caller.
+      // Bootstrap: creator writes their own member doc (role: owner) before
+      // their profile has a societyId — isAdminOfSociety() would fail here.
       allow create: if isAuth() && (
         isAdminOfSociety(request.resource.data.societyId) ||
-        (
-          request.resource.data.role == 'owner' &&
-          request.resource.data.userId == request.auth.uid
-        ) ||
+        (request.resource.data.role == 'owner' && request.resource.data.userId == request.auth.uid) ||
         isSuperAdmin()
       );
-
       allow update: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
       allow delete: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
     }
@@ -93,34 +74,24 @@ service cloud.firestore {
     // ─── Posts ─────────────────────────────────────────────────────────────────
 
     match /posts/{postId} {
-      // Public posts are readable by anyone; members_only posts require auth.
-      allow read: if resource.data.visibility == 'public' || isAuth();
-
+      allow read:   if resource.data.visibility == 'public' || isAuth();
       allow create: if isAuth() && (isAdminOfSociety(request.resource.data.societyId) || isSuperAdmin());
-
       allow update: if isAuth() && (
         isAdminOfSociety(resource.data.societyId) ||
         isSuperAdmin() ||
-        // Any authenticated user may toggle their own like (likeCount + likedBy + commentCount only).
+        // Any auth user may toggle their own like (only these fields allowed)
         request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['likeCount', 'likedBy', 'commentCount'])
       );
+      allow delete: if isSuperAdmin() || (isAuth() && isAdminOfSociety(resource.data.societyId));
 
-      // Society admin can delete their own posts; super admin can delete any post.
-      allow delete: if isSuperAdmin()
-                    || (isAuth() && isAdminOfSociety(resource.data.societyId));
-
-      // Comments sub-collection
       match /comments/{commentId} {
-        // Public posts are readable by anyone — their comments should be too.
         allow read:   if true;
         allow create: if isAuth();
         allow update: if isAuth() && isOwner(resource.data.authorId);
         allow delete: if isAuth() && (
           isOwner(resource.data.authorId) ||
-          isAdminOfSociety(
-            get(/databases/$(database)/documents/posts/$(postId)).data.societyId
-          ) ||
+          isAdminOfSociety(get(/databases/$(database)/documents/posts/$(postId)).data.societyId) ||
           isSuperAdmin()
         );
       }
@@ -130,7 +101,6 @@ service cloud.firestore {
 
     match /follows/{followId} {
       allow read:   if isAuth();
-      // Document ID is '{followerId}_{societyId}' — only the follower themselves can create.
       allow create: if isAuth() && isOwner(request.resource.data.followerId);
       allow delete: if isAuth() && (isOwner(resource.data.followerId) || isSuperAdmin());
     }
@@ -143,17 +113,13 @@ service cloud.firestore {
       allow update: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
       allow delete: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
 
-      // Messages sub-collection
       match /messages/{messageId} {
         allow read:   if isAuth();
-        // Any authenticated society member can send messages.
         allow create: if isAuth();
         allow update: if isAuth() && isOwner(resource.data.senderId);
         allow delete: if isAuth() && (
           isOwner(resource.data.senderId) ||
-          isAdminOfSociety(
-            get(/databases/$(database)/documents/groups/$(groupId)).data.societyId
-          ) ||
+          isAdminOfSociety(get(/databases/$(database)/documents/groups/$(groupId)).data.societyId) ||
           isSuperAdmin()
         );
       }
@@ -162,9 +128,7 @@ service cloud.firestore {
     // ─── Notifications ─────────────────────────────────────────────────────────
 
     match /notifications/{notifId} {
-      // Only the recipient or super admin can read a notification.
       allow read:   if isAuth() && (isOwner(resource.data.userId) || isSuperAdmin());
-      // Any authenticated user can create notifications (e.g. fan-out from createPost).
       allow create: if isAuth();
       allow update: if isAuth() && (isOwner(resource.data.userId) || isSuperAdmin());
       allow delete: if isAuth() && (isOwner(resource.data.userId) || isSuperAdmin());

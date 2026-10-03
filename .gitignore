@@ -48,3 +48,6 @@ ui-debug.log
 *.sln
 *.sw?
 
+
+# Firebase applet config (non-secret but redundant with .env.local)
+firebase-applet-config.json
