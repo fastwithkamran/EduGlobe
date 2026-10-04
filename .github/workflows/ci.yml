@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# EduGlobe — Continuous Integration
+# Opportune — Continuous Integration
 #
 # Runs on every push to main and on every Pull Request targeting main.
 # Two jobs:
@@ -55,7 +55,7 @@ jobs:
     env:
       # ── Public vars (safe to hardcode — NEXT_PUBLIC_ is exposed to browser anyway)
       NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME: hodumcas
-      NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: eduglobe_uploads
+      NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET: opportune_uploads
 
       # ── Secret vars — add these in GitHub: Settings → Secrets → Actions
       # These are only used at RUNTIME (not build time), so dummy values
