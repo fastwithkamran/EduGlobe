@@ -208,6 +208,18 @@ body {
   font-size: var(--text-base);
   overflow-x: hidden;
   min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.app-viewport,
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
+.app-shell {
+  width: 100%;
+  overflow: hidden;
 }
 
 /* --- Scrollbar Styling --- */

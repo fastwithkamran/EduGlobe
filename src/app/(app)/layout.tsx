@@ -116,11 +116,11 @@ export default function AdminLayout({
   if (loading) {
     return (
       <div
+        className="app-viewport"
         style={{
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          height: "100vh",
           background: "var(--bg-primary)",
         }}
       >
@@ -169,11 +169,10 @@ export default function AdminLayout({
 
   return (
     <div
+      className="app-shell"
       style={{
         display: "flex",
         flexDirection: isMobile ? "column" : "row",
-        height: "100vh",
-        overflow: "hidden",
         background: "var(--bg-primary)",
       }}
     >
@@ -181,6 +180,7 @@ export default function AdminLayout({
         <header
           style={{
             height: 60,
+            flexShrink: 0,
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
@@ -645,10 +645,10 @@ export default function AdminLayout({
         ref={mainRef}
         style={{
           flex: 1,
+          minHeight: 0,
           overflowY: "auto",
           display: "flex",
           flexDirection: "column",
-          paddingBottom: isMobile ? 65 : 0,
         }}
       >
         {children}
@@ -657,11 +657,9 @@ export default function AdminLayout({
       {isMobile && (
         <nav
           style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
+            flexShrink: 0,
             minHeight: 65,
+            width: "100%",
             background: "rgba(13, 18, 32, 0.9)",
             backdropFilter: "blur(20px)",
             WebkitBackdropFilter: "blur(20px)",
