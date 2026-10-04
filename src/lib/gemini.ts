@@ -2,18 +2,18 @@
 // EduGlobe — Gemini AI Service (Server-Side)
 // Used in /api/ai route. Never import directly in client components.
 // ============================================================
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const apiKey = process.env.EDU_AI_KEY;
 
 if (!apiKey) {
-  console.warn('⚠️  Missing EDU_AI_KEY — AI features unavailable.');
+  console.warn("⚠️  Missing EDU_AI_KEY — AI features unavailable.");
 }
 
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 export const geminiModel = genAI
-  ? genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+  ? genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
   : null;
 
 // ─── EduGlobe System Prompt ───────────────────────────────────────────────────
@@ -22,30 +22,37 @@ export const geminiModel = genAI
 // Users include university students, academic institutions, NGOs, research
 // bodies, and thought leaders who share knowledge, events, and opportunities.
 
-export const SYSTEM_PROMPT = `You are the AI Assistant for EduGlobe — a global discovery platform for students.
+export const SYSTEM_PROMPT = `You are the AI Assistant for EduGlobe — an opportunity discovery platform for Pakistani students across Pakistan and worldwide.
 
 About EduGlobe:
-EduGlobe connects students worldwide with posts, updates, and knowledge from universities, institutions, organisations, NGOs, research bodies, and individual scholars. Students follow the pages that matter to them and see a personalised global feed of academic content, events, opportunities, and insights.
+EduGlobe is a centralized opportunity discovery platform that connects students—especially across Pakistan and emerging markets—with real-time hackathons, tech competitions, scholarships, internships, and academic drives. Through a personalized feed, community submissions, and live updates, EduGlobe eliminates fragmented information channels so students never miss a deadline..
 
-You help institutions, organisations, and scholars who publish on EduGlobe with:
-- Writing compelling announcement posts that engage a global student audience
-- Drafting event descriptions for academic events, workshops, webinars, and competitions
-- Generating social media captions for sharing EduGlobe content across platforms
-- Suggesting content strategies to grow followers and increase post engagement
-- Writing professional outreach emails to partner institutions or sponsors
-- Crafting scholarship, internship, and opportunity announcements
-- Summarising research findings in student-friendly language
-- Providing tips for building a credible academic presence on EduGlobe
+You are the AI Assistant for EduGlobe — the ultimate opportunity discovery hub for students in Pakistan.
 
-Tone guidelines:
-- Be professional yet approachable — you are speaking to educators and students
-- Be globally inclusive — avoid region-specific assumptions unless the user specifies
-- Keep responses clear, well-structured, and actionable
-- Use markdown formatting (bold, bullet points) where it aids readability
-- When drafting posts or emails, tailor content to resonate with a diverse, international student audience`;
+Your Primary Role:
+Help students discover active hackathons, internships, scholarships, competitions, and tech events through real-time web research.
+
+Core Behavior & Search Rules:
+1. Always search for verified, currently open, or upcoming real-time opportunities (2026).
+2. Prioritize opportunities available to Pakistanis and international students.
+3. Keep answers concise, highly structured, and actionable. Avoid filler intro text or unnecessary disclaimers.
+
+Output Formatting Standard:
+When listing opportunities, use compact Markdown cards with these exact details:
+
+📌 [Opportunity Name / Title](Link)
+• Eligibility: [e.g., University Undergrads / Open to All / Region]
+• Deadline: [Exact Date]
+• Mode / Location: [Online / In-Person / City]
+• Prize / Perks: [Prize Pool / Stipend / Fully Funded]
+• Quick Take: [1 line summary]
+
+Tone Guidelines:
+- Energetic, encouraging, developer-friendly, and concise.
+- Direct-to-the-point layout with minimal prose.`;
 
 export interface ChatMessage {
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
 }
 
@@ -54,10 +61,17 @@ function buildChat(conversationHistory: ChatMessage[]) {
   if (!geminiModel) return null;
   return geminiModel.startChat({
     history: [
-      { role: 'user',  parts: [{ text: SYSTEM_PROMPT }] },
-      { role: 'model', parts: [{ text: 'Understood. I am EduGlobe\'s AI Assistant, ready to help institutions, organisations, and scholars create impactful content for students worldwide.' }] },
-      ...conversationHistory.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' as const : 'user' as const,
+      { role: "user", parts: [{ text: SYSTEM_PROMPT }] },
+      {
+        role: "model",
+        parts: [
+          {
+            text: "Understood. I am EduGlobe's AI Assistant, ready to help institutions, organisations, and scholars create impactful content for students worldwide.",
+          },
+        ],
+      },
+      ...conversationHistory.map((msg) => ({
+        role: msg.role === "assistant" ? ("model" as const) : ("user" as const),
         parts: [{ text: msg.content }],
       })),
     ],
@@ -81,7 +95,7 @@ export async function* generateAIStream(
 ): AsyncGenerator<string> {
   const chat = buildChat(conversationHistory);
   if (!chat) {
-    yield 'AI Assistant is currently unavailable. Please ensure EDU_AI_KEY is configured.';
+    yield "AI Assistant is currently unavailable. Please ensure EDU_AI_KEY is configured.";
     return;
   }
   try {
@@ -91,8 +105,8 @@ export async function* generateAIStream(
       if (text) yield text;
     }
   } catch (error) {
-    console.error('Gemini stream error:', error);
-    yield 'I encountered an issue. Please try again in a moment.';
+    console.error("Gemini stream error:", error);
+    yield "I encountered an issue. Please try again in a moment.";
   }
 }
 
@@ -106,13 +120,13 @@ export async function generateAIResponse(
 ): Promise<string> {
   const chat = buildChat(conversationHistory);
   if (!chat) {
-    return 'AI Assistant is currently unavailable. Please ensure EDU_AI_KEY is configured in your environment variables.';
+    return "AI Assistant is currently unavailable. Please ensure EDU_AI_KEY is configured in your environment variables.";
   }
   try {
     const result = await chat.sendMessage(userMessage);
     return result.response.text();
   } catch (error) {
-    console.error('Gemini API error:', error);
-    return 'I encountered an issue processing your request. Please try again in a moment.';
+    console.error("Gemini API error:", error);
+    return "I encountered an issue processing your request. Please try again in a moment.";
   }
 }
