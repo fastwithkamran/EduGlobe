@@ -758,6 +758,19 @@ a:hover {
 }
 
 /* --- Responsive --- */
+.feed-type-filters {
+  display: flex;
+}
+
+.feed-tab-button {
+  padding: 8px 18px;
+  font-size: 13px;
+}
+
+.feed-mobile-filter {
+  display: none;
+}
+
 @media (max-width: 1024px) {
   :root {
     --text-5xl: 2.5rem;
@@ -783,6 +796,28 @@ a:hover {
 
   .grid-auto {
     grid-template-columns: 1fr;
+  }
+
+  .feed-tab-button {
+    flex: 0 1 auto;
+    padding: 8px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .feed-mobile-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    padding: 4px 0 4px 6px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .feed-type-filters {
+    display: none;
   }
 }
 

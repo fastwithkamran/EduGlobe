@@ -281,6 +281,7 @@ export default function GlobalFeedPage() {
         <div
           style={{
             display: "flex",
+            alignItems: "center",
             borderBottom: "1px solid var(--border-primary)",
           }}
         >
@@ -288,9 +289,8 @@ export default function GlobalFeedPage() {
             <button
               key={t}
               onClick={() => setTab(t)}
+              className="feed-tab-button"
               style={{
-                padding: "8px 18px",
-                fontSize: 13,
                 fontWeight: 500,
                 color:
                   tab === t ? "var(--primary-400)" : "var(--text-tertiary)",
@@ -322,12 +322,37 @@ export default function GlobalFeedPage() {
               )}
             </button>
           ))}
+          <label className="feed-mobile-filter">
+            <span>Filter</span>
+            <select
+              className="select"
+              aria-label="Filter posts by type"
+              value={typeFilter}
+              onChange={(event) => {
+                const selectedFilter = TYPE_FILTERS.find(
+                  ({ value }) => value === event.target.value,
+                );
+                if (selectedFilter) setTypeFilter(selectedFilter.value);
+              }}
+              style={{
+                padding: "7px 28px 7px 10px",
+                fontSize: 12,
+                minWidth: 88,
+              }}
+            >
+              {TYPE_FILTERS.map(({ value, label }) => (
+                <option key={value} value={value}>
+                  {label.replace(/^[^A-Za-z]+/, "")}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {/* Type filter chips */}
         <div
+          className="feed-type-filters"
           style={{
-            display: "flex",
             gap: 6,
             flexWrap: "wrap",
             padding: "12px 0 4px",
