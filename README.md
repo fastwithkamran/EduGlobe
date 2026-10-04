@@ -1,20 +1,81 @@
-# EduGlobe 🌍
+# Opportune PK
 
-**EduGlobe** is a global discovery platform designed to connect students with a world of academic knowledge, opportunities, and insights.
+Opportune is a student opportunity discovery platform built for Pakistan and global learners.
 
-Think of it as a personalized global feed for students, where they can:
+It is designed to solve a real problem: students are currently forced to rely on random WhatsApp groups, scattered LinkedIn posts, emails, and social media pages to find hackathons, scholarships, internships, competitions, events, and announcements. At the same time, organizations struggle to market opportunities in one trusted place.
 
-* Discover content from a diverse range of sources: This includes universities, research institutions, organizations, NGOs, and individual scholars from around the globe.
-* Follow what matters to them: Students can subscribe to pages and topics that align with their academic interests and career aspirations.
-* Stay updated on key information: The platform delivers posts, updates, events, opportunities (like scholarships and internships), and valuable insights directly to their feed.
+Opportune brings all of that into a single platform so students can discover what matters, follow organizations, and never miss an opportunity again.
 
-In essence, EduGlobe aims to democratize access to academic information and foster a global community of learners.
+---
+
+## Problem Statement
+
+Students and young professionals in Pakistan often miss valuable opportunities because information is fragmented across multiple channels:
+
+- WhatsApp groups and forwarded messages
+- LinkedIn posts that are easy to miss
+- scattered university newsletters
+- social media pages with inconsistent updates
+- random event announcements across multiple communities
+
+This makes opportunity discovery slow, unreliable, and unfair.
+
+Organizations also face a challenge:
+
+- their announcements are spread across too many channels
+- event visibility is inconsistent
+- they do not have one central place for students to discover and act on opportunities
+
+Opportune solves this by creating a central, searchable, organized, and student-first platform for discovery.
+
+---
+
+## What the platform is for
+
+Opportune is a centralized feed and community platform where students can:
+
+- discover hackathons, scholarships, internships, events, and announcements
+- follow universities, communities, organizations, and student groups
+- browse opportunity posts from trusted sources
+- get personalized updates through a social feed
+- use an AI assistant to search for relevant opportunities faster
+- stay informed without bouncing between multiple platforms
+
+It is not just a static event listing. It is a live student opportunity ecosystem.
+
+---
+
+## Why this matters
+
+A student should not have to spend hours searching for the right opportunity. They should be able to open one app and immediately see:
+
+- what is happening now
+- what is upcoming
+- what is relevant to their field or interest
+- which organizations are active and trustworthy
+
+This is the idea behind Opportune.
+
+---
+
+## Core features
+
+- Global opportunity feed with posts and updates
+- Post categories for hackathons, scholarships, internships, announcements, and events
+- Followable societies and organizations
+- Student profiles and personalization
+- Notifications for new updates and announcements
+- AI-powered assistant for opportunity discovery
+- Admin and super-admin tools to manage communities and content
+- Organization-driven content publishing for events and opportunities
 
 ---
 
 ## 🌐 Live App
 
-**Visit the site:** <https://edu-globe-fastwithkamran.vercel.app>
+**Visit the site:** <https://opportune-pk.vercel.app>
+
+---
 
 ## 🎬 Demo Video
 
@@ -22,130 +83,194 @@ In essence, EduGlobe aims to democratize access to academic information and fost
 
 ---
 
-<table>
-<tr>
-<td valign="top" width="55%">
+## 🏆 Recognition
 
-### Google Swags — AI Seekho 2026
+This project was recognized through the **Google AI Seekho 2026** initiative in collaboration with Pakistan’s Ministry of IT & Telecom, Telenor Pakistan, and Innovista.
 
-Awarded by **Google for Developers** in collaboration with Pakistan's Ministry of IT & Telecom, Telenor Pakistan & Innovista — a **nationwide AI upskilling competition**.
-
-Recognized for building **[EduGlobe](https://edu-globe-fastwithkamran.vercel.app)** — a global academic discovery platform with a Gemini-powered AI assistant.
-
-</td>
-<td valign="top" width="45%" align="center">
-
-<img src="https://res.cloudinary.com/hodumcas/image/upload/v1786808023/Google_Swags_xdmkfa.jpg" width="235" alt="Google AI Seekho 2026 Swag" />
-
-*Google AI Seekho 2026 Swag*
-
-</td>
-</tr>
-</table>
+Opportune was built as a platform to help students find opportunities faster using a modern feed experience and AI assistance.
 
 ---
 
-## 🔥 Firebase
+## Stack
+
+- Next.js
+- TypeScript
+- Firebase Authentication
+- Firestore
+- Firebase Storage
+- Gemini AI
+- Cloudinary
+- Tailwind CSS
+
+---
+
+## Firebase and services
 
 This project uses Firebase for:
 
-* **Auth** — Google Sign-In
-* **Firestore** — Database
-* **Storage** — File uploads
+- Google Sign-In / authentication
+- Firestore database
+- cloud storage for media uploads
+- live feed and user data management
 
-The Firebase project config is in [`firebase-applet-config.json`](./firebase-applet-config.json) and is already wired up — no changes needed for local dev.
+The Firebase config is located in [`firebase-applet-config.json`](./firebase-applet-config.json).
 
-> **Note**: Firestore security rules are in [`firestore.rules`](./firestore.rules). If you hit permission errors, check your auth state.
+> Firestore and storage rules are defined in [`firestore.rules`](./firestore.rules) and [`storage.rules`](./storage.rules).
 
 ---
 
-## 📁 Project Structure
+## 📁 Project structure
 
-```
-EduGlobe/
-├── src/
-│   ├── app/                  # Next.js App Router pages
-│   │   ├── admin/            # Authenticated app shell
-│   │   │   ├── feed/         # Main content feed
-│   │   │   ├── societies/    # Browse institutions/organisations
-│   │   │   ├── society/      # Individual society page
-│   │   │   ├── ai/           # AI Assistant page
-│   │   │   ├── notifications/# Notifications
-│   │   │   ├── settings/     # User settings
-│   │   │   └── create-society/ # Create a new society
-│   │   ├── api/
-│   │   │   └── ai/           # Gemini AI API route (server-side)
-│   │   ├── globals.css       # Global styles + Tailwind v4
-│   │   ├── layout.tsx        # Root layout
-│   │   └── page.tsx          # Landing / auth page
-│   ├── contexts/
-│   │   └── AuthContext.tsx   # Firebase auth state
-│   ├── lib/
-│   │   ├── firebase.ts       # Firebase app init
-│   │   ├── firestore.ts      # Firestore helpers
-│   │   └── gemini.ts         # Gemini AI service (server-only)
-│   └── types/                # TypeScript types
+```text
+Opportune/
+├── .github/
+│   └── workflows/
+│       └── ci.yml
 ├── hooks/
-│   └── use-mobile.ts         # Responsive hook
-├── lib/                      # Shared utilities
-├── public/                   # Static assets
-├── firebase-applet-config.json # Firebase config
-├── firestore.rules           # Firestore security rules
-├── storage.rules             # Storage security rules
-├── next.config.ts            # Next.js config
-└── .env.local                # ← Create this file (gitignored)
+│   └── use-mobile.ts
+├── public/
+│   ├── logo.png
+│   ├── logo_bg.png
+│   └── animations/
+│       └── loading.json
+├── src/
+│   ├── app/
+│   │   ├── (app)/
+│   │   │   ├── ai/
+│   │   │   │   └── page.tsx
+│   │   │   ├── create-society/
+│   │   │   │   └── page.tsx
+│   │   │   ├── feed/
+│   │   │   │   ├── _components/
+│   │   │   │   │   ├── FeedSkeleton.tsx
+│   │   │   │   │   └── PostCard.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── my-society/
+│   │   │   │   ├── _components/
+│   │   │   │   │   ├── AboutTab.tsx
+│   │   │   │   │   ├── CommentThread.tsx
+│   │   │   │   │   ├── PostComposer.tsx
+│   │   │   │   │   └── SocietyPostCard.tsx
+│   │   │   │   └── page.tsx
+│   │   │   ├── notifications/
+│   │   │   │   └── page.tsx
+│   │   │   ├── settings/
+│   │   │   │   └── page.tsx
+│   │   │   ├── super-admin/
+│   │   │   │   └── page.tsx
+│   │   │   ├── layout.tsx
+│   │   │   └── page.tsx
+│   │   ├── api/
+│   │   │   └── ai/
+│   │   │       └── route.ts
+│   │   ├── globals.css
+│   │   ├── layout.tsx
+│   │   └── not-found.tsx
+│   ├── components/
+│   │   ├── CommentThread.tsx
+│   │   ├── Loader.tsx
+│   │   └── OpportunityCard.tsx
+│   ├── contexts/
+│   │   └── AuthContext.tsx
+│   ├── lib/
+│   │   ├── firebase.ts
+│   │   ├── firestore.ts
+│   │   ├── gemini.ts
+│   │   ├── postHelpers.ts
+│   │   └── utils.ts
+│   └── types/
+│       └── index.ts
+├── .env.example
+├── .gitignore
+├── firebase-applet-config.json
+├── firestore.rules
+├── next.config.ts
+├── package.json
+├── README.md
+├── storage.rules
+├── tsconfig.json
+└── vercel.json
 ```
 
 ---
 
-## 🚀 Run Locally
+## 🚀 Local setup
 
 ### Prerequisites
 
-* [Node.js](https://nodejs.org/) v18+
+- Node.js 18+
+- npm
+- Gemini API key
+- Firebase project
+- Cloudinary account
 
-* A [Gemini API Key](https://aistudio.google.com/apikey)
-
-### 1. Install Dependencies
+### 1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Configure Environment Variables
+### 2. Configure environment variables
 
-Copy `.env.example` to `.env.local` and fill in your values:
+Copy `.env.example` to `.env.local` and fill in the required values.
 
 ```bash
 copy .env.example .env.local
 ```
 
-Then open `.env.local` and set:
+Required environment variables include:
 
 | Variable | Description |
 | --- | --- |
-| `EDU_AI_KEY` | Your Gemini API key from [AI Studio](https://aistudio.google.com/apikey) |
-| `APP_URL` | `http://localhost:3000` for local dev |
+| `EDU_AI_KEY` | Gemini API key |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase web API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase sender ID |
+| `NEXT_PUBLIC_FIREBASE_DATABASE_ID` | Firestore database ID |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
+| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Cloudinary unsigned preset |
+| `CLOUDINARY_API_KEY` | Cloudinary API key |
+| `CLOUDINARY_API_SECRET` | Cloudinary API secret |
+| `FIREBASE_PROJECT_ID` | Firebase admin project ID |
+| `FIREBASE_CLIENT_EMAIL` | Firebase service account email |
+| `FIREBASE_PRIVATE_KEY` | Firebase private key |
 
-### 3. Run the Dev Server
+### 3. Run the app
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open the app at:
+
+```text
+http://localhost:3000
+```
 
 ---
 
-## 🛠️ Available Scripts
+## 🛠️ Available scripts
 
-| Command | Description |
-| --- | --- |
-| `npm run dev` | Start local development server |
-| `npm run build` | Build production bundle |
-| `npm run start` | Start production server |
-| `npm run lint` | Run ESLint |
+```bash
+npm run dev
+npm run build
+npm run start
+npm run lint
+```
 
 ---
 
-*Built for the AI Seekho 2026, a nationwide upskilling initiative launched by Google for Developers in collaboration with the Pakistani Ministry of IT & Telecom, Telenor Pakistan, and Innovista, built in AI Studio.*
+## Vision
+
+Opportune aims to become the go-to discovery platform for students in Pakistan and beyond — a trusted place where opportunities are visible, searchable, timely, and community-driven.
+
+The goal is simple:
+
+No more scattered groups. No more missed deadlines. Just one platform where students can discover what is next.
+
+---
+
+*Built for the AI Seekho 2026 initiative and designed to serve student opportunity discovery at scale.*
