@@ -247,7 +247,7 @@ export default function AIPage() {
             EduGlobe AI
           </span>
           <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
-            • Gemini 2.5 Flash Lite
+            • Gemini 3.1 Flash Lite
           </span>
         </div>
 

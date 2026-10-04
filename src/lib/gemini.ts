@@ -13,7 +13,7 @@ if (!apiKey) {
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
 
 export const geminiModel = genAI
-  ? genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" })
+  ? genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" })
   : null;
 
 // ─── EduGlobe System Prompt ───────────────────────────────────────────────────
