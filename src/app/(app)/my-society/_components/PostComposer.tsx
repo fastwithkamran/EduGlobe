@@ -180,6 +180,7 @@ export function PostComposer({
             border: `1px solid ${TYPE_TEXTS[type]}33`,
             padding: "12px 14px",
             marginBottom: 14,
+            marginTop: 5,
           }}
         >
           <div
