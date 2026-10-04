@@ -771,6 +771,11 @@ a:hover {
   display: none;
 }
 
+.feed-mobile-filter select option {
+  color: #111827;
+  background-color: #fff;
+}
+
 @media (max-width: 1024px) {
   :root {
     --text-5xl: 2.5rem;
