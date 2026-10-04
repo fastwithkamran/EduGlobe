@@ -159,6 +159,7 @@ export default function MySocietyPage() {
           {/* Logo */}
           <div
             style={{
+              position: "relative",
               width: 72,
               height: 72,
               borderRadius: 14,
@@ -177,7 +178,7 @@ export default function MySocietyPage() {
                 src={sanitizeImageUrl(society.logoURL)}
                 alt={society.name || "Society Logo"}
                 fill
-                sizes="(max-width: 768px) 100vw, 33vw"
+                sizes="72px"
                 style={{ objectFit: "cover" }}
               />
             ) : (
