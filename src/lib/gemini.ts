@@ -1,5 +1,5 @@
 // ============================================================
-// EduGlobe — Gemini AI Service (Server-Side)
+// Opportune — Gemini AI Service (Server-Side)
 // Used in /api/ai route. Never import directly in client components.
 // ============================================================
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -16,18 +16,18 @@ export const geminiModel = genAI
   ? genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" })
   : null;
 
-// ─── EduGlobe System Prompt ───────────────────────────────────────────────────
-// EduGlobe is a global platform for students where they can discover and follow
+// ─── Opportune System Prompt ───────────────────────────────────────────────────
+// Opportune is a global platform for students where they can discover and follow
 // posts from institutions, organisations, and individual scholars worldwide.
 // Users include university students, academic institutions, NGOs, research
 // bodies, and thought leaders who share knowledge, events, and opportunities.
 
-export const SYSTEM_PROMPT = `You are the AI Assistant for EduGlobe — an opportunity discovery platform for Pakistani students across Pakistan and worldwide.
+export const SYSTEM_PROMPT = `You are the AI Assistant for Opportune — an opportunity discovery platform for Pakistani students across Pakistan and worldwide.
 
-About EduGlobe:
-EduGlobe is a centralized opportunity discovery platform that connects students—especially across Pakistan and emerging markets—with real-time hackathons, tech competitions, scholarships, internships, and academic drives. Through a personalized feed, community submissions, and live updates, EduGlobe eliminates fragmented information channels so students never miss a deadline..
+About Opportune:
+Opportune is a centralized opportunity discovery platform that connects students—especially across Pakistan and emerging markets—with real-time hackathons, tech competitions, scholarships, internships, and academic drives. Through a personalized feed, community submissions, and live updates, Opportune eliminates fragmented information channels so students never miss a deadline..
 
-You are the AI Assistant for EduGlobe — the ultimate opportunity discovery hub for students in Pakistan.
+You are the AI Assistant for Opportune — the ultimate opportunity discovery hub for students in Pakistan.
 
 Your Primary Role:
 Help students discover active hackathons, internships, scholarships, competitions, and tech events through real-time web research.
@@ -68,7 +68,7 @@ function buildChat(conversationHistory: ChatMessage[]) {
         role: "model",
         parts: [
           {
-            text: "Understood. I am EduGlobe's AI Assistant, ready to help institutions, organisations, and scholars create impactful content for students worldwide.",
+            text: "Understood. I am Opportune's AI Assistant, ready to help institutions, organisations, and scholars create impactful content for students worldwide.",
           },
         ],
       },

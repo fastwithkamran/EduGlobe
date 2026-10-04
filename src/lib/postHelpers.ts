@@ -1,5 +1,5 @@
 // ============================================================
-// EduGlobe — Post Helper Utilities
+// Opportune — Post Helper Utilities
 // Shared across society feed, global feed, and post cards.
 // ============================================================
 

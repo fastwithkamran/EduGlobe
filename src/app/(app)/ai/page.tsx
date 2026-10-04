@@ -58,7 +58,7 @@ export default function AIPage() {
     {
       id: "welcome",
       role: "assistant",
-      content: `Hi! I'm EduGlobe's AI Assistant, powered by Gemini 🇵🇰\n\nI help Pakistani (and global) students discover **hackathons**, **scholarships**, **internships**, and **competitions** — so you never miss an opportunity again.\n\nWhat are you looking for today?`,
+      content: `Hi! I'm Opportune's AI Assistant, powered by Gemini 🇵🇰\n\nI help Pakistani (and global) students discover **hackathons**, **scholarships**, **internships**, and **competitions** — so you never miss an opportunity again.\n\nWhat are you looking for today?`,
       timestamp: new Date(),
     },
   ]);
@@ -244,7 +244,7 @@ export default function AIPage() {
               color: "var(--text-primary)",
             }}
           >
-            EduGlobe AI
+            Opportune AI
           </span>
           <span style={{ fontSize: 11, color: "var(--text-tertiary)" }}>
             • Gemini 3.1 Flash Lite

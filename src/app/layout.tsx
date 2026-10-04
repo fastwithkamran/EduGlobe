@@ -4,17 +4,17 @@ import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from '@/contexts/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'EduGlobe',
+  title: 'Opportune',
   description:
     'The all-in-one platform for students worldwide. Discover educational activities, post your creativity, and grow with AI-powered tools.',
-  keywords: ['Students', 'student organizations', 'Educational Platform', 'EduGlobe'],
-  authors: [{ name: 'EduGlobe' }],
+  keywords: ['Students', 'student organizations', 'Educational Platform', 'Opportune'],
+  authors: [{ name: 'Opportune' }],
    icons: {
     icon: '/logo_bg.png',
     apple: '/logo_bg.png',
   },
   openGraph: {
-    title: 'EduGlobe',
+    title: 'Opportune',
     description: 'The ultimate platform for students worldwide — powered by AI.',
     type: 'website',
     locale: 'en_US',
@@ -34,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
         {/* Anti-FOUC: read theme from localStorage before first paint */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('eduglobe-theme');if(t==='light')document.documentElement.dataset.theme='light';}catch(e){}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('opportune-theme');if(t==='light')document.documentElement.dataset.theme='light';}catch(e){}})();` }} />
       </head>
       <body>
         <AuthProvider>

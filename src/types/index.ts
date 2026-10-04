@@ -1,4 +1,4 @@
-// EduGlobe — Type Definitions
+// Opportune — Type Definitions
 
 // ─── User & Auth ─────────────────────────────────────────────────────────────
 

@@ -211,7 +211,7 @@ export default function GlobalFeedPage() {
                 marginBottom: 4,
               }}
             >
-              🌐 Global Learning Feed
+              🌐 Global Opportunity Feed
             </h1>
             <p style={{ color: "var(--text-tertiary)", fontSize: 13 }}>
               Discover posts from institutes around the world

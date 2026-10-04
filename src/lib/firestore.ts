@@ -1,5 +1,5 @@
 // ============================================================
-// EduGlobe — Firestore Service Layer
+// Opportune — Firestore Service Layer
 // All Firestore + Storage operations live here.
 // UI components never import from firebase/firestore directly.
 // ============================================================
@@ -58,7 +58,7 @@ export async function uploadFile(
   }
 
   // Use first path segment as folder (e.g. 'societies', 'avatars', 'posts')
-  const folder = path.split('/')[0] || 'eduglobe';
+  const folder = path.split('/')[0] || 'opportune';
 
   const formData = new FormData();
   formData.append('file', file);

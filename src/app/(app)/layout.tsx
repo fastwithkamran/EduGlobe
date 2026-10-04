@@ -69,7 +69,7 @@ export default function AdminLayout({
   // ─── Theme toggle ─────────────────────────────────────────────────────────
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   useEffect(() => {
-    const saved = localStorage.getItem("eduglobe-theme") as
+    const saved = localStorage.getItem("opportune-theme") as
       | "dark"
       | "light"
       | null;
@@ -79,7 +79,7 @@ export default function AdminLayout({
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
-    localStorage.setItem("eduglobe-theme", next);
+    localStorage.setItem("opportune-theme", next);
     if (next === "light") document.documentElement.dataset.theme = "light";
     else delete document.documentElement.dataset.theme;
   };
@@ -193,7 +193,7 @@ export default function AdminLayout({
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <Image
               src="/logo.png"
-              alt="EduGlobe"
+              alt="Opportune"
               width={32}
               height={32}
               style={{
@@ -209,7 +209,7 @@ export default function AdminLayout({
                 fontSize: 16,
               }}
             >
-              Edu<span style={{ color: "var(--primary-400)" }}>Globe</span>
+              Opportune
             </span>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -287,7 +287,7 @@ export default function AdminLayout({
           >
             <Image
               src="/logo.png"
-              alt="EduGlobe"
+              alt="Opportune"
               width={32}
               height={32}
               style={{
@@ -303,7 +303,7 @@ export default function AdminLayout({
                 fontSize: 16,
               }}
             >
-              Edu<span style={{ color: "var(--primary-400)" }}>Globe</span>
+              Opportune
             </span>
           </div>
 
@@ -459,7 +459,7 @@ export default function AdminLayout({
                   {userProfile?.photoURL ? (
                     <Image
                       src="/logo.png"
-                      alt="EduGlobe"
+                      alt="Opportune"
                       width={32}
                       height={32}
                       style={{

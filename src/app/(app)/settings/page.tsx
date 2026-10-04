@@ -225,7 +225,7 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
     if (typeof window === "undefined") return "dark";
     return (
-      (localStorage.getItem("eduglobe-theme") as "dark" | "light") ?? "dark"
+      (localStorage.getItem("opportune-theme") as "dark" | "light") ?? "dark"
     );
   });
 
@@ -234,7 +234,7 @@ export default function SettingsPage() {
     setTheme(next);
     if (next === "light") document.documentElement.dataset.theme = "light";
     else delete document.documentElement.dataset.theme;
-    localStorage.setItem("eduglobe-theme", next);
+    localStorage.setItem("opportune-theme", next);
   };
 
   // Populate form from profile whenever it loads/refreshes from context.
