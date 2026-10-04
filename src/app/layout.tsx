@@ -6,16 +6,30 @@ import { AuthProvider } from '@/contexts/AuthContext';
 export const metadata: Metadata = {
   title: 'Opportune',
   description:
-    'The all-in-one platform for students worldwide. Discover educational activities, post your creativity, and grow with AI-powered tools.',
-  keywords: ['Students', 'student organizations', 'Educational Platform', 'Opportune'],
+    'Discover hackathons, scholarships, internships, competitions, and events in one place. Opportune helps students in Pakistan find opportunities shared by organizations.',
+  keywords: [
+    'Opportune',
+    'student opportunities Pakistan',
+    'hackathons Pakistan',
+    'scholarships for students',
+    'internships Pakistan',
+    'student competitions',
+    'student events',
+    'university events',
+    'opportunity discovery platform',
+  ],
   authors: [{ name: 'Opportune' }],
+  verification: {
+    google: 'VNPyY13oobL3dsGPU06R_aUy4g6iNIvZr-S6qM9tPcg',
+  },
    icons: {
     icon: '/logo_bg.png',
     apple: '/logo_bg.png',
   },
   openGraph: {
     title: 'Opportune',
-    description: 'The ultimate platform for students worldwide — powered by AI.',
+    description:
+      'One place for students in Pakistan to discover hackathons, scholarships, internships, competitions, and events shared by organizations.',
     type: 'website',
     locale: 'en_US',
   },
