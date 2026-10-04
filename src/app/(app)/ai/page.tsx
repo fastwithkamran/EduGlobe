@@ -296,7 +296,7 @@ export default function AIPage() {
                     ? (user?.displayName?.slice(0, 2).toUpperCase() ?? "ME")
                     : "AI"}
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <div
                     style={{
                       padding: "10px 14px",
@@ -310,6 +310,7 @@ export default function AIPage() {
                       fontSize: 13,
                       lineHeight: 1.7,
                       whiteSpace: "pre-wrap",
+                      overflowWrap: "anywhere",
                       border: isUser
                         ? "none"
                         : "1px solid var(--border-primary)",
