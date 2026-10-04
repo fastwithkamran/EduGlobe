@@ -2,7 +2,7 @@
 
 // ─── User & Auth ─────────────────────────────────────────────────────────────
 
-export type UserRole = 'viewer' | 'admin' | 'super_admin';
+export type UserRole = "viewer" | "admin" | "super_admin";
 
 export interface UserProfile {
   uid: string;
@@ -10,8 +10,8 @@ export interface UserProfile {
   displayName: string;
   photoURL: string | null;
   role: UserRole | null;
-  universityName: string;    // University/institution the user belongs to
-  societyId: string | null;  // ID of the Academy they admin (null if viewer)
+  universityName: string; // University/institution the user belongs to
+  societyId: string | null; // ID of the Academy they admin (null if viewer)
   bio: string;
   contactInfo?: string;
   createdAt: Date;
@@ -20,21 +20,21 @@ export interface UserProfile {
 
 // ─── Society (Institute / Academy) ───────────────────────────────────────────
 
-export type SocietyPrivacy = 'public';  // All societies are publicly discoverable
+export type SocietyPrivacy = "public"; // All societies are publicly discoverable
 
 /** Where the community lives — all fields optional */
 export interface CommunityLinks {
-  discord?:   string;  // Discord server invite
-  whatsapp?:  string;  // WhatsApp group link
-  linkedin?:  string;  // LinkedIn page or profile
-  twitter?:   string;  // Twitter/X handle URL
-  instagram?: string;  // Instagram page URL
+  discord?: string; // Discord server invite
+  whatsapp?: string; // WhatsApp group link
+  linkedin?: string; // LinkedIn page or profile
+  twitter?: string; // Twitter/X handle URL
+  instagram?: string; // Instagram page URL
 }
 
 export interface Society {
   id: string;
   name: string;
-  organization: string;   // University, company, or club running this society
+  organization: string; // University, company, or club running this society
   city: string;
   country: string;
   description: string;
@@ -47,36 +47,32 @@ export interface Society {
   memberCount: number;
   followerCount: number;
   isVerified: boolean;
-  createdBy: string;        // uid of creator (auto-becomes admin)
+  createdBy: string; // uid of creator (auto-becomes admin)
   createdByName: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-
 // ─── Posts ────────────────────────────────────────────────────────────────────
 
 export type PostType =
-  | 'announcement'
-  | 'event'
-  | 'achievement'
-  | 'recruitment'
-  | 'general'
-  | 'hackathon'  
-  | 'scholarship' 
-  | 'internship';  
+  | "announcement"
+  | "event"
+  | "hackathon"
+  | "scholarship"
+  | "internship";
 
-export type PostVisibility = 'public';  // All posts are public — member system removed
+export type PostVisibility = "public"; // All posts are public — member system removed
 
-/** Structured metadata for hackathon / scholarship / internship posts */
+/** Structured metadata for posts */
 export interface OpportunityMeta {
-  deadline?: string;  
-  prize?: string;     
-  location?: string;  
-  skills?: string[];  
-  applyLink?: string; 
-  organizer?: string; 
-  country?: string;   
+  deadline?: string;
+  prize?: string;
+  location?: string;
+  skills?: string[];
+  applyLink?: string;
+  organizer?: string;
+  country?: string;
 }
 
 export interface Post {
@@ -125,16 +121,15 @@ export interface Follow {
   createdAt: Date;
 }
 
-
 // ─── Notifications ────────────────────────────────────────────────────────────
 // Only 'new_post' actively triggers notifications (from followed societies).
 
 export type NotificationType =
-  | 'new_post'       
-  | 'post_like'
-  | 'post_comment'
-  | 'society_followed'
-  | 'system';
+  | "new_post"
+  | "post_like"
+  | "post_comment"
+  | "society_followed"
+  | "system";
 
 export interface Notification {
   id: string;
@@ -152,7 +147,7 @@ export interface Notification {
 // ─── AI Chat ──────────────────────────────────────────────────────────────────
 export interface AIMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: Date;
 }
