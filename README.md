@@ -89,6 +89,23 @@ This project was recognized through the **Google AI Seekho 2026** initiative in 
 
 Opportune was built as a platform to help students find opportunities faster using a modern feed experience and AI assistance.
 
+### Google AI Seekho Swags and Recognition Email
+
+<table>
+<tr>
+<td align="center" width="50%">
+<img src="https://res.cloudinary.com/hodumcas/image/upload/v1786808023/Google_Swags_xdmkfa.jpg" width="400" alt="Google AI Seekho 2026 swags received in recognition of Opportune" />
+<br />
+<em>Google AI Seekho 2026 swags</em>
+</td>
+<td align="center" width="50%">
+<img src="https://res.cloudinary.com/hodumcas/image/upload/v1791133848/Email_gms9by.png" width="400" alt="Email screenshot confirming recognition for Opportune" />
+<br />
+<em>Recognition email</em>
+</td>
+</tr>
+</table>
+
 ---
 
 ## Stack
