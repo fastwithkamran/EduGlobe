@@ -38,7 +38,7 @@ function timeLabel(date: Date): string {
 // Render the Markdown patterns used in AI responses without injecting HTML.
 function renderInline(text: string, keyPrefix: string) {
   const pattern =
-    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\(([^)\n]+)\)\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<>"']+)|\*\*([^*]+)\*\*/g;
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\(([^)\n]+)\)\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<>"']+)|\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|__([^_]+)__|(?<!\*)\*([^*\n]+)\*(?!\*)|(?<!_)_([^_\n]+)_(?!_)/g;
   const parts = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -81,12 +81,19 @@ function renderInline(text: string, keyPrefix: string) {
       }
     } else if (match[6]) {
       parts.push(
-        <strong
-          key={`${keyPrefix}-${partIndex++}`}
-          style={{ color: "var(--text-primary)" }}
-        >
-          {match[6]}
+        <strong key={`${keyPrefix}-${partIndex++}`}>
+          <em>{match[6]}</em>
         </strong>,
+      );
+    } else if (match[7] || match[8]) {
+      parts.push(
+        <strong key={`${keyPrefix}-${partIndex++}`}>
+          {match[7] ?? match[8]}
+        </strong>,
+      );
+    } else if (match[9] || match[10]) {
+      parts.push(
+        <em key={`${keyPrefix}-${partIndex++}`}>{match[9] ?? match[10]}</em>,
       );
     }
 
@@ -109,6 +116,21 @@ function renderContent(text: string, isUser: boolean) {
 
   while (lineIndex < lines.length) {
     const line = lines[lineIndex];
+    if (/^\s*(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/.test(line)) {
+      blocks.push(
+        <hr
+          key={`rule-${lineIndex}`}
+          style={{
+            border: 0,
+            borderTop: "1px solid var(--border-primary)",
+            margin: "4px 0 12px",
+          }}
+        />,
+      );
+      lineIndex += 1;
+      continue;
+    }
+
     const listMatch = line.match(/^\s*(?:([•*-])|(\d+[.)]))\s+(.+)$/);
 
     if (listMatch) {
