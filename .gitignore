@@ -51,3 +51,6 @@ ui-debug.log
 
 # Firebase applet config (non-secret but redundant with .env.local)
 firebase-applet-config.json
+
+# TypeScript compiler cache file
+*.tsbuildinfo
