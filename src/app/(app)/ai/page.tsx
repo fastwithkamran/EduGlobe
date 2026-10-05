@@ -35,19 +35,130 @@ function timeLabel(date: Date): string {
   });
 }
 
-// Render markdown-like bold + line breaks
-function renderContent(text: string) {
-  const parts = text.split(/(\*\*[^*]+\*\*)/g);
-  return parts.map((p, i) => {
-    if (p.startsWith("**") && p.endsWith("**")) {
-      return (
-        <strong key={i} style={{ color: "var(--text-primary)" }}>
-          {p.slice(2, -2)}
-        </strong>
+// Render the Markdown patterns used in AI responses without injecting HTML.
+function renderInline(text: string, keyPrefix: string) {
+  const pattern =
+    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\(([^)\n]+)\)\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<>"']+)|\*\*([^*]+)\*\*/g;
+  const parts = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  let partIndex = 0;
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(
+        <span key={`${keyPrefix}-${partIndex++}`}>
+          {text.slice(lastIndex, match.index)}
+        </span>,
       );
     }
-    return <span key={i}>{p}</span>;
-  });
+
+    const markdownLabel = match[1] ?? match[3];
+    const link = match[2] ?? match[4] ?? match[5];
+    if (link) {
+      const trailing = match[5]?.match(/[.,!?;:]+$/)?.[0] ?? "";
+      const href = trailing ? link.slice(0, -trailing.length) : link;
+      parts.push(
+        <a
+          key={`${keyPrefix}-${partIndex++}`}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: "var(--primary-400)",
+            textDecoration: "underline",
+            textUnderlineOffset: 2,
+            fontWeight: 600,
+          }}
+        >
+          {markdownLabel ?? href}
+        </a>,
+      );
+      if (trailing) {
+        parts.push(
+          <span key={`${keyPrefix}-${partIndex++}`}>{trailing}</span>,
+        );
+      }
+    } else if (match[6]) {
+      parts.push(
+        <strong
+          key={`${keyPrefix}-${partIndex++}`}
+          style={{ color: "var(--text-primary)" }}
+        >
+          {match[6]}
+        </strong>,
+      );
+    }
+
+    lastIndex = pattern.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(
+      <span key={`${keyPrefix}-${partIndex++}`}>{text.slice(lastIndex)}</span>,
+    );
+  }
+
+  return parts;
+}
+
+function renderContent(text: string, isUser: boolean) {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  const blocks = [];
+  let lineIndex = 0;
+
+  while (lineIndex < lines.length) {
+    const line = lines[lineIndex];
+    const listMatch = line.match(/^\s*(?:([•*-])|(\d+[.)]))\s+(.+)$/);
+
+    if (listMatch) {
+      const isOrdered = Boolean(listMatch[2]);
+      const items = [];
+      while (lineIndex < lines.length) {
+        const itemMatch = lines[lineIndex].match(
+          /^\s*(?:([•*-])|(\d+[.)]))\s+(.+)$/,
+        );
+        if (!itemMatch || Boolean(itemMatch[2]) !== isOrdered) break;
+        items.push(itemMatch[3]);
+        lineIndex += 1;
+      }
+
+      const List = isOrdered ? "ol" : "ul";
+      blocks.push(
+        <List
+          key={`list-${lineIndex}`}
+          style={{ margin: "0 0 8px 18px", padding: 0 }}
+        >
+          {items.map((item, index) => (
+            <li key={index} style={{ paddingLeft: 2 }}>
+              {renderInline(item, `list-${lineIndex}-${index}`)}
+            </li>
+          ))}
+        </List>,
+      );
+      continue;
+    }
+
+    if (line.trim()) {
+      const heading = line.match(/^#{1,3}\s+(.+)$/);
+      blocks.push(
+        <p
+          key={`line-${lineIndex}`}
+          style={{
+            margin: "0 0 8px",
+            fontSize: heading ? 14 : undefined,
+            fontWeight: heading ? 700 : undefined,
+            color: isUser ? "#fff" : undefined,
+          }}
+        >
+          {renderInline(heading?.[1] ?? line, `line-${lineIndex}`)}
+        </p>,
+      );
+    }
+    lineIndex += 1;
+  }
+
+  return blocks;
 }
 
 const MAX_MESSAGE_LENGTH = 1_000;
@@ -316,7 +427,7 @@ export default function AIPage() {
                         : "1px solid var(--border-primary)",
                     }}
                   >
-                    {renderContent(msg.content)}
+                    {renderContent(msg.content, isUser)}
                   </div>
                   <div
                     style={{
@@ -410,7 +521,7 @@ export default function AIPage() {
             <input
               ref={inputRef}
               className="input"
-              style={{ flex: 1 }}
+              style={{ flex: 1, color: "#fff" }}
               placeholder="Ask anything…"
               value={input}
               maxLength={MAX_MESSAGE_LENGTH}
