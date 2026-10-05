@@ -8,7 +8,7 @@ import {
   collection, doc, getDoc, getDocs, addDoc, setDoc,
   updateDoc, deleteDoc, query, where, orderBy, limit,
   onSnapshot, serverTimestamp, arrayUnion, arrayRemove,
-  increment, type QuerySnapshot, type Unsubscribe,
+  increment, runTransaction, type QuerySnapshot, type Unsubscribe,
 } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from './firebase';
@@ -450,15 +450,29 @@ export async function isFollowing(userId: string, societyId: string): Promise<bo
 }
 
 export async function followSociety(userId: string, societyId: string): Promise<void> {
-  await setDoc(doc(db, 'follows', `${userId}_${societyId}`), {
-    followerId: userId, societyId, createdAt: serverTimestamp(),
+  const followRef = doc(db, 'follows', `${userId}_${societyId}`);
+  const societyRef = doc(db, 'societies', societyId);
+  await runTransaction(db, async (transaction) => {
+    const follow = await transaction.get(followRef);
+    if (follow.exists()) return;
+
+    transaction.set(followRef, {
+      followerId: userId, societyId, createdAt: serverTimestamp(),
+    });
+    transaction.update(societyRef, { followerCount: increment(1) });
   });
-  await updateDoc(doc(db, 'societies', societyId), { followerCount: increment(1) });
 }
 
 export async function unfollowSociety(userId: string, societyId: string): Promise<void> {
-  await deleteDoc(doc(db, 'follows', `${userId}_${societyId}`));
-  await updateDoc(doc(db, 'societies', societyId), { followerCount: increment(-1) });
+  const followRef = doc(db, 'follows', `${userId}_${societyId}`);
+  const societyRef = doc(db, 'societies', societyId);
+  await runTransaction(db, async (transaction) => {
+    const follow = await transaction.get(followRef);
+    if (!follow.exists()) return;
+
+    transaction.delete(followRef);
+    transaction.update(societyRef, { followerCount: increment(-1) });
+  });
 }
 
 export async function getFollowedSocietyIds(userId: string): Promise<string[]> {

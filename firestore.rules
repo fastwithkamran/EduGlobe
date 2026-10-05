@@ -29,6 +29,25 @@ service cloud.firestore {
       return u.role in ['admin', 'super_admin'] && u.societyId == societyId;
     }
 
+    function isFollowCountUpdate(societyId) {
+      let followPath = /databases/$(database)/documents/follows/$(request.auth.uid + '_' + societyId);
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followerCount'])
+        && request.resource.data.followerCount is int
+        && (
+          (!exists(followPath)
+            && existsAfter(followPath)
+            && getAfter(followPath).data.followerId == request.auth.uid
+            && getAfter(followPath).data.societyId == societyId
+            && request.resource.data.followerCount == resource.data.followerCount + 1)
+          ||
+          (exists(followPath)
+            && !existsAfter(followPath)
+            && get(followPath).data.followerId == request.auth.uid
+            && get(followPath).data.societyId == societyId
+            && request.resource.data.followerCount == resource.data.followerCount - 1)
+        );
+    }
+
     // ─── Users ─────────────────────────────────────────────────────────────────
 
     match /users/{uid} {
@@ -43,7 +62,11 @@ service cloud.firestore {
     match /societies/{societyId} {
       allow read:   if resource.data.privacy == 'public' || isAuth();
       allow create: if isAuth();
-      allow update: if isAuth() && (isAdminOfSociety(societyId) || isSuperAdmin());
+      allow update: if isAuth() && (
+        isAdminOfSociety(societyId) ||
+        isSuperAdmin() ||
+        isFollowCountUpdate(societyId)
+      );
       allow delete: if isSuperAdmin();
     }
 
