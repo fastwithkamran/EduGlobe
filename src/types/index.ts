@@ -11,14 +11,14 @@ export interface UserProfile {
   photoURL: string | null;
   role: UserRole | null;
   universityName: string; // University/institution the user belongs to
-  societyId: string | null; // ID of the Academy they admin (null if viewer)
+  societyId: string | null; // ID of the society they administer (null if none)
   bio: string;
   contactInfo?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-// ─── Society (Institute / Academy) ───────────────────────────────────────────
+// ─── Society ──────────────────────────────────────────────────────────────────
 
 export type SocietyPrivacy = "public"; // All societies are publicly discoverable
 

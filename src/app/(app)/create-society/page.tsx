@@ -1,12 +1,13 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { createSociety, uploadFile } from '@/lib/firestore';
 import { sanitizeImageUrl } from '@/lib/utils';
 import type { CommunityLinks } from '@/types';
+import Loader from '../../../components/Loader';
 
 // ─── Static styles ─────────────────────────────────────────────────────────────
 const card: React.CSSProperties = {
@@ -37,7 +38,13 @@ const COMMUNITY_LINKS: { key: keyof CommunityLinks; icon: string; label: string;
 // ─── Page ──────────────────────────────────────────────────────────────────────
 export default function CreateSocietyPage() {
   const router = useRouter();
-  const { user, userProfile, refreshUserProfile } = useAuth();
+  const { user, userProfile, loading, refreshUserProfile } = useAuth();
+
+  useEffect(() => {
+    if (userProfile?.societyId) {
+      router.replace('/my-society');
+    }
+  }, [router, userProfile?.societyId]);
 
   const [form, setForm] = useState({
     name:         '',
@@ -66,7 +73,7 @@ export default function CreateSocietyPage() {
     setForm(p => ({ ...p, communityLinks: { ...p.communityLinks, [key]: value } }));
 
   const validate = (): string | null => {
-    if (!form.name.trim())        return 'Institute name is required';
+    if (!form.name.trim())        return 'Society name is required';
     if (!form.city.trim())        return 'City is required';
     if (!form.country.trim())     return 'Country is required';
     if (!form.description.trim()) return 'Description is required';
@@ -136,16 +143,24 @@ export default function CreateSocietyPage() {
     background: 'rgba(255,255,255,0.02)',
   };
 
+  if (loading || userProfile?.societyId) {
+    return (
+      <div className="flex items-center justify-center h-full text-[var(--text-tertiary)]">
+        <Loader />
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: 'var(--page-padding-y) var(--page-padding-x)', maxWidth: 700 }}>
 
       {/* Page header */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
-          ✚ Share Wisdom
+          Create a Society
         </h1>
         <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
-          You&apos;ll automatically become the admin. All institutes are public and appear in the global feed.
+          Create a community on Opportune to share opportunities, events, and updates. Your society will be public and discoverable in the global feed, and you&apos;ll become its admin.
         </p>
       </div>
 
@@ -156,7 +171,7 @@ export default function CreateSocietyPage() {
           <div style={head}>Basic Information</div>
           <div style={body}>
             <div style={fieldGap}>
-              <label style={label}>Institute / Society Name *</label>
+              <label style={label}>Society Name *</label>
               <input className="input" style={{ width: '100%' }} placeholder="e.g. FAST Computing Society"
                 value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} required />
             </div>
@@ -297,7 +312,7 @@ export default function CreateSocietyPage() {
             Cancel
           </button>
           <button type="submit" className="btn btn-primary" disabled={saving} style={{ minWidth: 160 }}>
-            {saving ? '⏳ Creating…' : '🏛️ Create Institute'}
+            {saving ? '⏳ Creating…' : '🏛️ Create Society'}
           </button>
         </div>
 

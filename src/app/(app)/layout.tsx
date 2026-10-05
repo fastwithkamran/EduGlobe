@@ -17,11 +17,8 @@ const NAV_ITEMS = [
     items: [{ label: "Global Feed", href: "/feed", icon: "🌐" }],
   },
   {
-    section: "Learning Center",
-    items: [
-      { label: "Academy", href: "/my-society", icon: "🏛️" },
-      { label: "Share Wisdom", href: "/create-society", icon: "✚" },
-    ],
+    section: "Community",
+    items: [{ label: "Society", href: "/my-society", icon: "🏛️" }],
   },
   {
     section: "AI Tools",
@@ -161,7 +158,7 @@ export default function AdminLayout({
 
   const mobileNavItems = [
     { label: "Feed", href: "/feed", icon: "🌐" },
-    { label: "Academy", href: "/my-society", icon: "🏛️" },
+    { label: "Society", href: "/my-society", icon: "🏛️" },
     { label: "AI", href: "/ai", icon: "🤖" },
     { label: "Alerts", href: "/notifications", icon: "🔔", badge: unreadCount },
     { label: "Profile", href: "/settings", icon: "⚙️" },
@@ -227,22 +224,7 @@ export default function AdminLayout({
             >
               {theme === "dark" ? "☀️" : "🌙"}
             </button>
-            {user ? (
-              <Link
-                href="/create-society"
-                style={{
-                  color: "#fff",
-                  textDecoration: "none",
-                  background: "var(--gradient-primary)",
-                  padding: "4px 10px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                + Share Wisdom
-              </Link>
-            ) : (
+            {!user && (
               <button
                 onClick={handleGuestSignIn}
                 style={{
@@ -360,7 +342,6 @@ export default function AdminLayout({
                         : 0;
                     const isAdminItem = (item as { superAdminOnly?: boolean })
                       .superAdminOnly;
-                    const isCreateSociety = item.href === "/create-society";
                     return (
                       <Link
                         key={item.href}
@@ -369,7 +350,7 @@ export default function AdminLayout({
                           display: "flex",
                           alignItems: "center",
                           gap: 10,
-                          padding: isCreateSociety ? "9px 10px" : "8px 10px",
+                          padding: "8px 10px",
                           borderRadius: "var(--radius-md)",
                           marginBottom: 3,
                           textDecoration: "none",
@@ -378,21 +359,13 @@ export default function AdminLayout({
                             ? isAdminItem
                               ? "#ef4444"
                               : "var(--primary-400)"
-                            : isCreateSociety
-                              ? "var(--text-primary)"
-                              : "var(--text-secondary)",
+                            : "var(--text-secondary)",
                           background: isActive
                             ? isAdminItem
                               ? "rgba(239,68,68,0.1)"
                               : "rgba(16,185,129,0.12)"
-                            : isCreateSociety
-                              ? "linear-gradient(135deg,var(--primary-500),var(--primary-700))"
-                              : "transparent",
-                          border:
-                            isCreateSociety && !isActive
-                              ? "1px solid rgba(16,185,129,0.3)"
-                              : "none",
-                          fontWeight: isCreateSociety ? 600 : 400,
+                            : "transparent",
+                          fontWeight: 400,
                           transition: "all .15s",
                         }}
                       >

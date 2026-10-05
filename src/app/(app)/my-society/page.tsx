@@ -90,7 +90,7 @@ export default function MySocietyPage() {
             marginBottom: 8,
           }}
         >
-          No Academy Yet
+          No Society Yet
         </h2>
         <p
           style={{
@@ -99,13 +99,13 @@ export default function MySocietyPage() {
             marginBottom: 24,
           }}
         >
-          You haven&apos;t created an Academy. Create one to get started!
+          You don&apos;t manage a society yet. Create one to share opportunities, events, and updates with the Opportune community.
         </p>
         <button
           className="btn btn-primary"
           onClick={() => router.push("/create-society")}
         >
-          + Start a Education Hub
+          + Create a Society
         </button>
       </div>
     );
