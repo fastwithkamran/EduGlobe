@@ -25,7 +25,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   # ── Job 1: Lint ─────────────────────────────────────────────────────────────
   lint:
     name: 🔍 Lint
@@ -37,8 +36,8 @@ jobs:
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
@@ -50,7 +49,7 @@ jobs:
   build:
     name: 🏗️ Build
     runs-on: ubuntu-latest
-    needs: lint        # only run build if lint passes
+    needs: lint # only run build if lint passes
 
     env:
       # ── Public vars (safe to hardcode — NEXT_PUBLIC_ is exposed to browser anyway)
@@ -60,14 +59,14 @@ jobs:
       # ── Secret vars — add these in GitHub: Settings → Secrets → Actions
       # These are only used at RUNTIME (not build time), so dummy values
       # work for CI builds. But real values are used if you add them as secrets.
-      CLOUDINARY_API_KEY:     ${{ secrets.CLOUDINARY_API_KEY }}
-      CLOUDINARY_API_SECRET:  ${{ secrets.CLOUDINARY_API_SECRET }}
-      EDU_AI_KEY:             ${{ secrets.EDU_AI_KEY }}
+      CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+      CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+      EDU_AI_KEY: ${{ secrets.EDU_AI_KEY }}
 
       # Firebase Admin — lazy-initialized, not needed at build time
-      FIREBASE_PROJECT_ID:    ${{ secrets.FIREBASE_PROJECT_ID }}
-      FIREBASE_CLIENT_EMAIL:  ${{ secrets.FIREBASE_CLIENT_EMAIL }}
-      FIREBASE_PRIVATE_KEY:   ${{ secrets.FIREBASE_PRIVATE_KEY }}
+      FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+      FIREBASE_CLIENT_EMAIL: ${{ secrets.FIREBASE_CLIENT_EMAIL }}
+      FIREBASE_PRIVATE_KEY: ${{ secrets.FIREBASE_PRIVATE_KEY }}
 
     steps:
       - name: Checkout code
@@ -76,8 +75,8 @@ jobs:
       - name: Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci

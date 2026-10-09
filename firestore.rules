@@ -2,8 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─── Helpers ───────────────────────────────────────────────────────────────
-
     function isAuth() {
       return request.auth != null;
     }
@@ -12,18 +10,38 @@ service cloud.firestore {
       return request.auth.uid == uid;
     }
 
+    function isUserProfileUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['displayName', 'photoURL', 'universityName', 'bio', 'contactInfo', 'updatedAt']);
+    }
+
+    // Promotes a role-less user to admin of a society THEY created.
+    // Uses existsAfter/getAfter so it also passes when the society and the
+    // user update are committed in the same batch (createSociety does this).
+    function isSocietyAdminBootstrap(uid) {
+      let societyId = request.resource.data.societyId;
+      let societyPath = /databases/$(database)/documents/societies/$(societyId);
+      return isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['role', 'societyId', 'updatedAt'])
+        && resource.data.role == null
+        && resource.data.societyId == null
+        && request.resource.data.role == 'admin'
+        && societyId is string
+        && existsAfter(societyPath)
+        && getAfter(societyPath).data.createdBy == uid;
+    }
+
     function getUserData() {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
     // Super admin role is set directly on the Firestore user doc (role: "super_admin").
-    // No email is hardcoded here — grant access via the Firestore console.
     function isSuperAdmin() {
       return isAuth() && getUserData().role == 'super_admin';
     }
 
     // True when the signed-in user is an admin/owner of the given society.
-    // Do NOT call this during society-creation bootstrap (societyId not yet set on profile).
     function isAdminOfSociety(societyId) {
       let u = getUserData();
       return u.role in ['admin', 'super_admin'] && u.societyId == societyId;
@@ -48,70 +66,111 @@ service cloud.firestore {
         );
     }
 
+    // A signed-in user may add or remove ONLY their own uid in likedBy,
+    // and likeCount must move by exactly one in the same direction.
+    function isLikeToggle() {
+      let o = resource.data;
+      let d = request.resource.data;
+      return d.diff(o).affectedKeys().hasOnly(['likeCount', 'likedBy'])
+        && (
+          (!(request.auth.uid in o.likedBy)
+            && d.likedBy == o.likedBy.concat([request.auth.uid])
+            && d.likeCount == o.likeCount + 1)
+          ||
+          ((request.auth.uid in o.likedBy)
+            && d.likedBy == o.likedBy.removeAll([request.auth.uid])
+            && d.likeCount == o.likeCount - 1)
+        );
+    }
+
+    // commentCount may only move by one at a time (comment add / delete).
+    function isCommentCountChange() {
+      let o = resource.data;
+      let d = request.resource.data;
+      return d.diff(o).affectedKeys().hasOnly(['commentCount'])
+        && d.commentCount is int
+        && d.commentCount >= 0
+        && (d.commentCount == o.commentCount + 1 || d.commentCount == o.commentCount - 1);
+    }
+
     // ─── Users ─────────────────────────────────────────────────────────────────
+    // NOTE: read is open to any signed-in user (author names/avatars). Consider
+    // moving email/contactInfo to a private subcollection (users/{uid}/private).
 
     match /users/{uid} {
       allow read:   if isAuth();
-      allow create: if isAuth() && isOwner(uid);
-      allow update: if isAuth() && (isOwner(uid) || isSuperAdmin());
-      allow delete: if isSuperAdmin();
+      allow create: if isAuth() && isOwner(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.role == null
+        && request.resource.data.societyId == null;
+      allow update: if isAuth() && (
+        isSuperAdmin() ||
+        (isOwner(uid) && isUserProfileUpdate()) ||
+        isSocietyAdminBootstrap(uid)
+      );
+      // Users may delete their own profile (account deletion flow).
+      allow delete: if isAuth() && (isOwner(uid) || isSuperAdmin());
     }
 
     // ─── Societies ─────────────────────────────────────────────────────────────
 
     match /societies/{societyId} {
-      allow read:   if resource.data.privacy == 'public' || isAuth();
-      allow create: if isAuth();
+      allow read:   if true;
+      // Only a role-less user (or super admin) may create, only as themselves,
+      // and never pre-verified or with a fake follower count.
+      allow create: if isAuth()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.isVerified == false
+        && request.resource.data.followerCount == 0
+        && (getUserData().role == null || getUserData().role == 'super_admin');
       allow update: if isAuth() && (
-        isAdminOfSociety(societyId) ||
         isSuperAdmin() ||
+        // Society admins can edit their society but not trust/ownership fields.
+        (isAdminOfSociety(societyId)
+          && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['isVerified', 'createdBy', 'createdByName', 'createdAt', 'followerCount'])) ||
         isFollowCountUpdate(societyId)
       );
       allow delete: if isSuperAdmin();
     }
 
-    // ─── Members ───────────────────────────────────────────────────────────────
-
-    match /members/{memberId} {
-      allow read: if isAuth();
-      // Bootstrap: creator writes their own member doc (role: owner) before
-      // their profile has a societyId — isAdminOfSociety() would fail here.
-      allow create: if isAuth() && (
-        isAdminOfSociety(request.resource.data.societyId) ||
-        (request.resource.data.role == 'owner' && request.resource.data.userId == request.auth.uid) ||
-        isSuperAdmin()
-      );
-      allow update: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
-      allow delete: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
-    }
-
-    // ─── Invitations ───────────────────────────────────────────────────────────
-
-    match /invitations/{invId} {
-      allow read:   if isAuth();
-      allow create: if isAuth() && (isAdminOfSociety(request.resource.data.societyId) || isSuperAdmin());
-      allow update: if isAuth();
-      allow delete: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
-    }
-
     // ─── Posts ─────────────────────────────────────────────────────────────────
 
     match /posts/{postId} {
-      allow read:   if resource.data.visibility == 'public' || isAuth();
-      allow create: if isAuth() && (isAdminOfSociety(request.resource.data.societyId) || isSuperAdmin());
+      allow read:   if true;
+      allow create: if isAuth()
+        && (isAdminOfSociety(request.resource.data.societyId) || isSuperAdmin())
+        && request.resource.data.likeCount == 0
+        && request.resource.data.commentCount == 0
+        && request.resource.data.likedBy.size() == 0
+        && request.resource.data.content is string
+        && request.resource.data.content.size() <= 10000
+        && request.resource.data.createdAt == request.time;
       allow update: if isAuth() && (
-        isAdminOfSociety(resource.data.societyId) ||
         isSuperAdmin() ||
-        // Any auth user may toggle their own like (only these fields allowed)
-        request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['likeCount', 'likedBy', 'commentCount'])
+        (isAdminOfSociety(resource.data.societyId)
+          // Admins edit content, but never the ownership/counter fields.
+          && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['societyId', 'createdAt', 'likeCount', 'likedBy', 'commentCount'])) ||
+        isLikeToggle() ||
+        isCommentCountChange()
       );
       allow delete: if isSuperAdmin() || (isAuth() && isAdminOfSociety(resource.data.societyId));
 
       match /comments/{commentId} {
         allow read:   if true;
-        allow create: if isAuth();
-        allow update: if isAuth() && isOwner(resource.data.authorId);
+        allow create: if isAuth()
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 100
+          && request.resource.data.createdAt == request.time;
+        allow update: if isAuth()
+          && isOwner(resource.data.authorId)
+          && request.resource.data.authorId == resource.data.authorId
+          && request.resource.data.content is string
+          && request.resource.data.content.size() > 0
+          && request.resource.data.content.size() <= 100;
         allow delete: if isAuth() && (
           isOwner(resource.data.authorId) ||
           isAdminOfSociety(get(/databases/$(database)/documents/posts/$(postId)).data.societyId) ||
@@ -121,40 +180,56 @@ service cloud.firestore {
     }
 
     // ─── Follows ───────────────────────────────────────────────────────────────
+    // Readable only by the follower, that society's admin, or a super admin.
+    // `get` allows resource == null so transactions can check "does it exist yet".
 
     match /follows/{followId} {
-      allow read:   if isAuth();
-      allow create: if isAuth() && isOwner(request.resource.data.followerId);
+      allow get: if isAuth() && (
+        resource == null ||
+        isOwner(resource.data.followerId) ||
+        isAdminOfSociety(resource.data.societyId) ||
+        isSuperAdmin()
+      );
+      allow list: if isAuth() && (
+        isOwner(resource.data.followerId) ||
+        isAdminOfSociety(resource.data.societyId) ||
+        isSuperAdmin()
+      );
+      // Doc ID must be "<followerId>_<societyId>" (the client uses this ID in
+      // transactions and the follower-count rule relies on it).
+      allow create: if isAuth()
+        && isOwner(request.resource.data.followerId)
+        && followId == request.resource.data.followerId + '_' + request.resource.data.societyId;
       allow delete: if isAuth() && (isOwner(resource.data.followerId) || isSuperAdmin());
     }
 
-    // ─── Groups ────────────────────────────────────────────────────────────────
-
-    match /groups/{groupId} {
-      allow read:   if isAuth();
-      allow create: if isAuth() && (isAdminOfSociety(request.resource.data.societyId) || isSuperAdmin());
-      allow update: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
-      allow delete: if isAuth() && (isAdminOfSociety(resource.data.societyId) || isSuperAdmin());
-
-      match /messages/{messageId} {
-        allow read:   if isAuth();
-        allow create: if isAuth();
-        allow update: if isAuth() && isOwner(resource.data.senderId);
-        allow delete: if isAuth() && (
-          isOwner(resource.data.senderId) ||
-          isAdminOfSociety(get(/databases/$(database)/documents/groups/$(groupId)).data.societyId) ||
-          isSuperAdmin()
-        );
-      }
-    }
-
     // ─── Notifications ─────────────────────────────────────────────────────────
+    // Created by a society admin for that society's new post (fan-out to followers).
+    // Ideally move this fan-out into a Cloud Function and set create to `false`.
 
     match /notifications/{notifId} {
       allow read:   if isAuth() && (isOwner(resource.data.userId) || isSuperAdmin());
-      allow create: if isAuth();
-      allow update: if isAuth() && (isOwner(resource.data.userId) || isSuperAdmin());
+      allow create: if isAuth()
+        && request.resource.data.keys().hasOnly(
+          ['userId', 'title', 'message', 'isRead', 'relatedPostId', 'relatedSocietyId', 'createdAt'])
+        && request.resource.data.userId is string
+        && request.resource.data.isRead == false
+        && request.resource.data.relatedSocietyId is string
+        && request.resource.data.createdAt == request.time
+        // A super admin can publish for any society, so they must be able to notify too.
+        && (isAdminOfSociety(request.resource.data.relatedSocietyId) || isSuperAdmin());
+      // Recipients can only flip isRead — never rewrite the message or userId.
+      allow update: if isAuth()
+        && (isOwner(resource.data.userId) || isSuperAdmin())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
       allow delete: if isAuth() && (isOwner(resource.data.userId) || isSuperAdmin());
+    }
+
+    // ─── Server-only collections ───────────────────────────────────────────────
+    // /api/ai rate-limit counters. Written via the Admin SDK (bypasses rules).
+
+    match /rateLimits/{id} {
+      allow read, write: if false;
     }
 
   }

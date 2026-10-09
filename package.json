@@ -1,5 +1,5 @@
 {
-  "name": "ai-studio-applet",
+  "name": "opportune-fastwithkamran",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,10 +10,10 @@
     "clean": "next clean"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "autoprefixer": "^10.4.21",
+    "@google/genai": "^2.27.0",
     "cloudinary": "^2.11.0",
     "firebase": "^12.12.1",
+    "firebase-admin": "^14.5.0",
     "lottie-react": "^3.1.2",
     "next": "^16.2.9",
     "postcss": "^8.5.23",
@@ -30,8 +30,5 @@
     "eslint-config-next": "16.0.8",
     "tailwindcss": "4.1.11",
     "typescript": "5.9.3"
-  },
-  "overrides": {
-    "uuid": ">=11.1.1"
   }
 }

@@ -114,7 +114,6 @@ Opportune was built as a platform to help students find opportunities faster usi
 - TypeScript
 - Firebase Authentication
 - Firestore
-- Firebase Storage
 - Gemini AI
 - Cloudinary
 - Tailwind CSS
@@ -127,12 +126,12 @@ This project uses Firebase for:
 
 - Google Sign-In / authentication
 - Firestore database
-- cloud storage for media uploads
+- Cloudinary for media uploads
 - live feed and user data management
 
-The Firebase config is located in [`firebase-applet-config.json`](./firebase-applet-config.json).
+The Firebase web config is located in [`src/lib/firebase.ts`](./src/lib/firebase.ts).
 
-> Firestore and storage rules are defined in [`firestore.rules`](./firestore.rules) and [`storage.rules`](./storage.rules).
+> Firestore rules are defined in [`firestore.rules`](./firestore.rules).
 
 ---
 
@@ -141,10 +140,9 @@ The Firebase config is located in [`firebase-applet-config.json`](./firebase-app
 ```text
 Opportune/
 ├── .github/
+│   ├── dependabot.yml
 │   └── workflows/
 │       └── ci.yml
-├── hooks/
-│   └── use-mobile.ts
 ├── public/
 │   ├── logo.png
 │   ├── logo_bg.png
@@ -154,41 +152,58 @@ Opportune/
 │   ├── app/
 │   │   ├── (app)/
 │   │   │   ├── ai/
+│   │   │   │   ├── _components/
+│   │   │   │   │   └── AIMessageContent.tsx
 │   │   │   │   └── page.tsx
 │   │   │   ├── create-society/
+│   │   │   │   ├── _components/
+│   │   │   │   │   ├── ImageUploadField.tsx
+│   │   │   │   │   └── SocietyFormSections.tsx
 │   │   │   │   └── page.tsx
 │   │   │   ├── feed/
 │   │   │   │   ├── _components/
 │   │   │   │   │   ├── FeedSkeleton.tsx
-│   │   │   │   │   └── PostCard.tsx
+│   │   │   │   │   ├── PostCard.tsx
+│   │   │   │   │   └── SocietyAboutDialog.tsx
 │   │   │   │   └── page.tsx
 │   │   │   ├── my-society/
 │   │   │   │   ├── _components/
 │   │   │   │   │   ├── AboutTab.tsx
-│   │   │   │   │   ├── CommentThread.tsx
+│   │   │   │   │   ├── AttachmentPreview.tsx
+│   │   │   │   │   ├── NoSocietyState.tsx
 │   │   │   │   │   ├── PostComposer.tsx
+│   │   │   │   │   ├── SocietyHeader.tsx
 │   │   │   │   │   └── SocietyPostCard.tsx
 │   │   │   │   └── page.tsx
 │   │   │   ├── notifications/
 │   │   │   │   └── page.tsx
 │   │   │   ├── settings/
+│   │   │   │   ├── _components/
+│   │   │   │   │   └── DeleteAccountModal.tsx
 │   │   │   │   └── page.tsx
 │   │   │   ├── super-admin/
+│   │   │   │   ├── _components/
+│   │   │   │   │   ├── ConfirmDeleteModal.tsx
+│   │   │   │   │   └── SocietyRow.tsx
 │   │   │   │   └── page.tsx
-│   │   │   ├── layout.tsx
-│   │   │   └── page.tsx
+│   │   │   └── layout.tsx
 │   │   ├── api/
-│   │   │   └── ai/
-│   │   │       └── route.ts
+│   │   │   ├── ai/
+│   │   │   │   └── route.ts
+│   │   │   └── cloudinary/
+│   │   │       └── delete/
+│   │   │           └── route.ts
 │   │   ├── globals.css
-│   │   ├── layout.tsx
-│   │   └── not-found.tsx
+│   │   └── layout.tsx
 │   ├── components/
 │   │   ├── CommentThread.tsx
 │   │   ├── Loader.tsx
-│   │   └── OpportunityCard.tsx
+│   │   ├── OpportunityCard.tsx
+│   │   └── OpportunityMetaFields.tsx
 │   ├── contexts/
 │   │   └── AuthContext.tsx
+│   ├── hooks/
+│   │   └── useTheme.ts
 │   ├── lib/
 │   │   ├── firebase.ts
 │   │   ├── firestore.ts
@@ -199,12 +214,14 @@ Opportune/
 │       └── index.ts
 ├── .env.example
 ├── .gitignore
-├── firebase-applet-config.json
+├── firebase.json
+├── firestore.indexes.json
 ├── firestore.rules
 ├── next.config.ts
+├── package-lock.json
 ├── package.json
+├── postcss.config.mjs
 ├── README.md
-├── storage.rules
 ├── tsconfig.json
 └── vercel.json
 ```
@@ -237,23 +254,22 @@ copy .env.example .env.local
 
 Required environment variables include:
 
-| Variable | Description |
-| --- | --- |
-| `EDU_AI_KEY` | Gemini API key |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase web API key |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase sender ID |
-| `NEXT_PUBLIC_FIREBASE_DATABASE_ID` | Firestore database ID |
-| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` | Cloudinary cloud name |
-| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET` | Cloudinary unsigned preset |
-| `CLOUDINARY_API_KEY` | Cloudinary API key |
-| `CLOUDINARY_API_SECRET` | Cloudinary API secret |
-| `FIREBASE_PROJECT_ID` | Firebase admin project ID |
-| `FIREBASE_CLIENT_EMAIL` | Firebase service account email |
-| `FIREBASE_PRIVATE_KEY` | Firebase private key |
+| Variable                                   | Description                    |
+| ------------------------------------------ | ------------------------------ |
+| `EDU_AI_KEY`                               | Gemini API key                 |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID`          | Firebase project ID            |
+| `NEXT_PUBLIC_FIREBASE_APP_ID`              | Firebase app ID                |
+| `NEXT_PUBLIC_FIREBASE_API_KEY`             | Firebase web API key           |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`         | Firebase auth domain           |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase sender ID             |
+| `NEXT_PUBLIC_FIREBASE_DATABASE_ID`         | Firestore database ID          |
+| `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`        | Cloudinary cloud name          |
+| `NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET`     | Cloudinary unsigned preset     |
+| `CLOUDINARY_API_KEY`                       | Cloudinary API key             |
+| `CLOUDINARY_API_SECRET`                    | Cloudinary API secret          |
+| `FIREBASE_PROJECT_ID`                      | Firebase admin project ID      |
+| `FIREBASE_CLIENT_EMAIL`                    | Firebase service account email |
+| `FIREBASE_PRIVATE_KEY`                     | Firebase private key           |
 
 ### 3. Run the app
 
@@ -290,4 +306,4 @@ No more scattered groups. No more missed deadlines. Just one platform where stud
 
 ---
 
-*Built for the AI Seekho 2026 initiative and designed to serve student opportunity discovery at scale.*
+_Built for the AI Seekho 2026 initiative and designed to serve student opportunity discovery at scale._

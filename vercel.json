@@ -5,7 +5,7 @@
   "devCommand": "next dev",
   "installCommand": "npm install",
   "outputDirectory": ".next",
-  "regions": ["sin1"],
+  "regions": ["bom1"],
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 30
@@ -16,8 +16,14 @@
       "source": "/api/(.*)",
       "headers": [
         { "key": "Access-Control-Allow-Origin", "value": "*" },
-        { "key": "Access-Control-Allow-Methods", "value": "GET, POST, PUT, DELETE, OPTIONS" },
-        { "key": "Access-Control-Allow-Headers", "value": "Content-Type, Authorization" }
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization"
+        }
       ]
     }
   ]
