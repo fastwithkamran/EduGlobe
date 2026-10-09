@@ -41,6 +41,22 @@ function timeLabel(date: Date): string {
 const MAX_MESSAGE_LENGTH = 1_000;
 const CHAT_SESSION_KEY = "opportune-ai-chat-v1";
 
+const ERROR_MARKERS = [
+  "I couldn't retrieve a response right now",
+  "Please try again shortly",
+  "[Response interrupted",
+  "[The response was interrupted",
+  "Daily AI request limit reached",
+  "The AI assistant is unavailable",
+  "temporarily receiving high traffic",
+];
+
+function isCleanHistoryMessage(m: AIMessage): boolean {
+  if (m.id === "welcome") return false;
+  if (!m.content || !m.content.trim()) return false;
+  return !ERROR_MARKERS.some((marker) => m.content.includes(marker));
+}
+
 type StoredAIMessage = Omit<AIMessage, "timestamp"> & { timestamp: string };
 
 function isStoredMessage(value: unknown): value is StoredAIMessage {
@@ -167,7 +183,7 @@ export default function AIPage() {
         body: JSON.stringify({
           message: trimmed,
           history: messages
-            .filter((m) => m.id !== "welcome")
+            .filter(isCleanHistoryMessage)
             .map((m) => ({ role: m.role, content: m.content })),
         }),
       });

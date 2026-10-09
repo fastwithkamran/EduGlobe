@@ -2,7 +2,7 @@
 
 import { type NextRequest, NextResponse } from "next/server";
 import { isIP } from "node:net";
-import { generateAIStream, type ChatMessage } from "@/lib/gemini";
+import { generateAIStream, type ChatMessage, AI_ERROR_MARKERS } from "@/lib/gemini";
 
 const MAX_BODY_BYTES = 32 * 1024;
 const MAX_MESSAGE_CHARS = 1_000;
@@ -132,6 +132,14 @@ function parseRequestBody(rawBody: string): {
       entry.content.length > MAX_HISTORY_MESSAGE_CHARS
     ) {
       return null;
+    }
+
+    if (
+      AI_ERROR_MARKERS.some((marker) =>
+        (entry.content as string).includes(marker),
+      )
+    ) {
+      continue;
     }
 
     historyChars += entry.content.length;
