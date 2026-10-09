@@ -1,6 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, type QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { v2 as cloudinary } from "cloudinary";
 import { type NextRequest, NextResponse } from "next/server";
 
@@ -154,7 +154,7 @@ async function ownsAsset(
       : db.collection("posts");
     const postsSnapshot = await postsQuery.get();
 
-    return postsSnapshot.docs.some((post) =>
+    return postsSnapshot.docs.some((post: QueryDocumentSnapshot) =>
       (post.data().attachments ?? []).some(
         (attachment: { fileURL?: unknown }) => attachment.fileURL === assetUrl,
       ),

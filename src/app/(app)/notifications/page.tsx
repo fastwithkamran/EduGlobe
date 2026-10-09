@@ -1,146 +1,368 @@
-'use client';
+"use client";
 
-import { useEffect, useRef, useState } from 'react';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToNotifications, markNotificationRead, markAllNotificationsRead } from '@/lib/firestore';
-import type { Notification } from '@/types';
+import Link from "next/link";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import toast from "react-hot-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  markAllNotificationsRead,
+  markNotificationRead,
+  subscribeToNotifications,
+} from "@/lib/firestore";
+import { timeAgo } from "@/lib/postHelpers";
+import type { Notification } from "@/types";
 
-function timeAgo(date: Date): string {
-  const s = Math.floor((Date.now() - date.getTime()) / 1000);
-  if (s < 60) return 'just now';
-  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
-  if (s < 86400) return `${Math.floor(s / 3600)} hours ago`;
-  if (s < 48 * 3600) return 'Yesterday';
-  return date.toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+const NOTIFICATION_LIMIT = 30;
+const TIME_REFRESH_MS = 60_000;
+
+/** Firestore can hand back null (pending serverTimestamp) or an invalid Date.
+ *  Calling toISOString() on those throws and would crash the whole page. */
+function getValidDate(value: unknown): Date | null {
+  return value instanceof Date && !Number.isNaN(value.getTime()) ? value : null;
 }
 
-// Per updated spec: notifications are ONLY triggered when a followed society
-// publishes a new post. Other activity types are filtered to 'new_post' only.
+function NotificationRow({
+  notification,
+  isMarkingRead,
+  onMarkRead,
+}: {
+  notification: Notification;
+  isMarkingRead: boolean;
+  onMarkRead: (id: string) => void;
+}) {
+  const createdAt = getValidDate(notification.createdAt);
+  const statusLabel = notification.isRead ? "Read" : "Unread";
+
+  return (
+    <article
+      className="flex items-start gap-3 py-4"
+      style={{ borderBottom: "1px solid var(--border-secondary)" }}
+    >
+      <span
+        role="img"
+        aria-label={statusLabel}
+        title={statusLabel}
+        className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+        style={{
+          background: notification.isRead
+            ? "var(--text-muted)"
+            : "var(--primary-500)",
+          boxShadow: notification.isRead
+            ? "none"
+            : "0 0 6px var(--primary-500)",
+        }}
+      />
+      <span aria-hidden="true" className="w-5 shrink-0 text-center text-base">
+        📝
+      </span>
+
+      <div className="min-w-0 flex-1">
+        <h2
+          className="mb-1 text-[13px] text-[var(--text-primary)]"
+          style={{
+            fontWeight: notification.isRead ? 400 : 600,
+            fontFamily: "var(--font-body)",
+            letterSpacing: "normal",
+          }}
+        >
+          {notification.title}
+        </h2>
+        {/* Read items are dimmed via colour, not opacity, so text keeps readable contrast */}
+        <p
+          className={`m-0 break-words text-[13px] leading-relaxed ${
+            notification.isRead
+              ? "text-[var(--text-tertiary)]"
+              : "text-[var(--text-secondary)]"
+          }`}
+        >
+          {notification.message}
+        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-[var(--text-muted)]">
+          {createdAt ? (
+            <time dateTime={createdAt.toISOString()}>
+              {timeAgo(createdAt)}
+            </time>
+          ) : (
+            <span>Just now</span>
+          )}
+          {notification.relatedPostId && (
+            <Link
+              href="/feed"
+              className="font-medium text-[var(--primary-400)] hover:underline"
+              onClick={() => {
+                if (!notification.isRead) onMarkRead(notification.id);
+              }}
+            >
+              Open Global Feed
+            </Link>
+          )}
+          {!notification.isRead && (
+            <button
+              type="button"
+              onClick={() => onMarkRead(notification.id)}
+              disabled={isMarkingRead}
+              className="font-medium text-[var(--primary-400)] hover:underline disabled:cursor-wait disabled:opacity-60"
+              aria-label={`Mark "${notification.title}" as read`}
+            >
+              {isMarkingRead ? "Marking read…" : "Mark as read"}
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function NotificationSkeleton() {
+  return (
+    <div role="status" className="px-4 sm:px-5">
+      <span className="sr-only">Loading notifications…</span>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          aria-hidden="true"
+          className="flex items-start gap-3 py-4"
+          style={{ borderBottom: "1px solid var(--border-secondary)" }}
+        >
+          <div className="skeleton mt-1.5 h-2 w-2 shrink-0 rounded-full" />
+          <div className="min-w-0 flex-1">
+            <div className="skeleton mb-2 h-3.5 w-2/5" />
+            <div className="skeleton mb-2 h-3 w-4/5" />
+            <div className="skeleton h-2.5 w-16" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function NotificationsPage() {
-  const { user } = useAuth();
+  const { user, loading: authLoading, loginWithGoogle } = useAuth();
+  const uid = user?.uid ?? null;
+
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [subscriptionState, setSubscriptionState] = useState<{
+    key: string;
+    status: "ready" | "error";
+  } | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
   const [markingAll, setMarkingAll] = useState(false);
-  const unsubRef = useRef<(() => void) | null>(null);
+  const [markingReadIds, setMarkingReadIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  // Synchronous guard: state updates are async, so rapid double-clicks (or the
+  // "Open Global Feed" link + button) could otherwise fire duplicate writes.
+  const inFlightRef = useRef<Set<string>>(new Set());
+  const [, setTick] = useState(0);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (!user?.uid) { setLoading(false); return; }
-    unsubRef.current = subscribeToNotifications(user.uid, data => {
-      // Filter to new_post only — per updated spec
-      const filtered = data.filter(n => n.type === 'new_post');
-      setNotifications(filtered);
-      setLoading(false);
-    });
-    return () => unsubRef.current?.();
-  }, [user?.uid]);
+    if (!uid) return;
+    let active = true;
+    const key = `${uid}:${retryCount}`;
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+    const unsubscribe = subscribeToNotifications(
+      uid,
+      (data) => {
+        if (!active) return;
+        setNotifications(data);
+        setSubscriptionState({ key, status: "ready" });
+      },
+      (error) => {
+        if (!active) return;
+        console.error("[NotificationsPage] Subscription failed:", error);
+        setSubscriptionState({ key, status: "error" });
+      },
+    );
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [uid, retryCount]);
+
+  // Keep "5 minutes ago" labels fresh.
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((n) => n + 1), TIME_REFRESH_MS);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const subscriptionKey = uid ? `${uid}:${retryCount}` : null;
+  const subscriptionStatus =
+    subscriptionKey && subscriptionState?.key === subscriptionKey
+      ? subscriptionState.status
+      : null;
+
+  const signedOut = !authLoading && !uid;
+  const loading = authLoading || Boolean(uid && subscriptionStatus === null);
+  const listenerError = subscriptionStatus === "error";
+
+  // Never show another account's data: after logout / account switch the state
+  // still holds the previous user's list until a new snapshot arrives.
+  const visibleNotifications =
+    subscriptionStatus === "ready" ? notifications : [];
+
+  const unreadCount = visibleNotifications.filter((n) => !n.isRead).length;
 
   const handleMarkRead = async (id: string) => {
-    try { await markNotificationRead(id); }
-    catch { toast.error('Failed to mark read'); }
+    if (inFlightRef.current.has(id)) return;
+    inFlightRef.current.add(id);
+    setMarkingReadIds((current) => new Set(current).add(id));
+    try {
+      await markNotificationRead(id);
+    } catch (error) {
+      console.error("[NotificationsPage] markNotificationRead failed:", error);
+      toast.error("Failed to mark notification as read", {
+        id: `mark-read-${id}`,
+      });
+    } finally {
+      inFlightRef.current.delete(id);
+      setMarkingReadIds((current) => {
+        const next = new Set(current);
+        next.delete(id);
+        return next;
+      });
+    }
   };
 
   const handleMarkAll = async () => {
-    if (!user?.uid) return;
+    if (!uid || markingAll) return;
     setMarkingAll(true);
     try {
-      await markAllNotificationsRead(user.uid);
-      toast.success('All notifications marked as read');
-    } catch { toast.error('Failed to update notifications'); }
-    finally { setMarkingAll(false); }
+      await markAllNotificationsRead(uid);
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      console.error("[NotificationsPage] markAllNotificationsRead failed:", error);
+      toast.error("Failed to update notifications");
+    } finally {
+      setMarkingAll(false);
+    }
   };
 
+  const retrySubscription = () => setRetryCount((count) => count + 1);
+
+  const statusText = signedOut
+    ? "Sign in to view your notifications."
+    : loading
+      ? "Loading notifications…"
+      : listenerError
+        ? "Notifications could not be loaded."
+        : unreadCount > 0
+          ? `${unreadCount} unread in your latest ${NOTIFICATION_LIMIT} notifications`
+          : `No unread in your latest ${NOTIFICATION_LIMIT} notifications`;
+
+  let body: ReactNode;
+  if (signedOut) {
+    body = (
+      <div className="p-10 text-center sm:p-14">
+        <div aria-hidden="true" className="mb-3 text-4xl">
+          🔒
+        </div>
+        <h2 className="mb-1 text-[15px] font-semibold text-[var(--text-secondary)]">
+          You’re signed out
+        </h2>
+        <p className="mx-auto mb-4 max-w-md text-[13px] text-[var(--text-tertiary)]">
+          Sign in to see updates from the societies you follow.
+        </p>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm inline-flex"
+          onClick={() => loginWithGoogle().catch(() => {})}
+        >
+          Sign in
+        </button>
+      </div>
+    );
+  } else if (loading) {
+    body = <NotificationSkeleton />;
+  } else if (listenerError) {
+    body = (
+      <div role="alert" className="p-10 text-center">
+        <p className="mb-4 text-sm text-[var(--text-secondary)]">
+          We couldn’t load your notifications. Please try again.
+        </p>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm"
+          onClick={retrySubscription}
+        >
+          Try again
+        </button>
+      </div>
+    );
+  } else if (visibleNotifications.length === 0) {
+    body = (
+      <div className="p-10 text-center sm:p-14">
+        <div aria-hidden="true" className="mb-3 text-4xl">
+          🔔
+        </div>
+        <h2 className="mb-1 text-[15px] font-semibold text-[var(--text-secondary)]">
+          No notifications yet
+        </h2>
+        <p className="mx-auto mb-4 max-w-md text-[13px] text-[var(--text-tertiary)]">
+          Follow societies in the Global Feed to hear when they share a new
+          post.
+        </p>
+        <Link href="/feed" className="btn btn-primary btn-sm inline-flex">
+          🌐 Go to Global Feed
+        </Link>
+      </div>
+    );
+  } else {
+    body = (
+      <div className="px-4 sm:px-5">
+        {visibleNotifications.map((notification) => (
+          <NotificationRow
+            key={notification.id}
+            notification={notification}
+            isMarkingRead={markingReadIds.has(notification.id)}
+            onMarkRead={(id) => void handleMarkRead(id)}
+          />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div style={{ padding: 'var(--page-padding-y) var(--page-padding-x)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+    <main
+      style={{ padding: "var(--page-padding-y) var(--page-padding-x)" }}
+      aria-labelledby="notifications-heading"
+    >
+      <header className="mb-5 flex items-start justify-between gap-4">
         <div>
-          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, marginBottom: 4 }}>🔔 Notifications</h1>
-          <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
-            {loading ? 'Loading…' : unreadCount > 0
-              ? `${unreadCount} unread — new posts from followed institutes`
-              : 'All caught up!'}
+          <h1
+            id="notifications-heading"
+            className="mb-1 text-[22px] font-extrabold"
+            style={{ fontFamily: "var(--font-heading)" }}
+          >
+            <span aria-hidden="true">🔔</span> Notifications
+          </h1>
+          <p
+            className="m-0 text-[13px] text-[var(--text-tertiary)]"
+            aria-live="polite"
+          >
+            {statusText}
           </p>
         </div>
-        {unreadCount > 0 && (
-          <button className="btn btn-outline btn-sm" onClick={handleMarkAll} disabled={markingAll}>
-            {markingAll ? '⏳ Updating…' : 'Mark all read'}
+        {!loading && !listenerError && !signedOut && unreadCount > 0 && (
+          <button
+            type="button"
+            className="btn btn-outline btn-sm shrink-0"
+            onClick={handleMarkAll}
+            disabled={markingAll}
+            title="Marks all of your notifications as read, including ones older than the 30 shown here"
+          >
+            {markingAll ? "⏳ Updating…" : "Mark all read"}
           </button>
         )}
-      </div>
+      </header>
 
-      {/* Info banner explaining notification scope */}
-      <div style={{
-        background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.15)',
-        borderRadius: 10, padding: '10px 14px', marginBottom: 18,
-        fontSize: 12, color: 'var(--text-secondary)', display: 'flex', gap: 8, alignItems: 'flex-start',
-      }}>
-        <span style={{ fontSize: 14, flexShrink: 0 }}>ℹ️</span>
-        <span>
-          You receive notifications only when a institute you <strong style={{ color: 'var(--primary-400)' }}>follow</strong> publishes a new post.
-          Follow institutes in the <a href="/feed" style={{ color: 'var(--primary-400)' }}>Global Feed</a> to start receiving updates.
-        </span>
-      </div>
-
-      <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-xl)', overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>Loading notifications…</div>
-        ) : notifications.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-tertiary)' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🔔</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>No notifications yet</div>
-            <p style={{ fontSize: 13 }}>
-              Follow institutes in the Global Feed — you&apos;ll be notified whenever they post.
-            </p>
-            <a href="/feed" className="btn btn-primary btn-sm" style={{ marginTop: 16, display: 'inline-flex' }}>
-              🌐 Go to Global Feed
-            </a>
-          </div>
-        ) : (
-          <div style={{ padding: '0 16px' }}>
-            {notifications.map((n, i) => (
-              <div
-                key={n.id}
-                onClick={() => !n.isRead && handleMarkRead(n.id)}
-                style={{
-                  display: 'flex', gap: 12, padding: '14px 0', alignItems: 'flex-start',
-                  borderBottom: i < notifications.length - 1 ? '1px solid var(--border-secondary)' : 'none',
-                  cursor: !n.isRead ? 'pointer' : 'default',
-                  opacity: n.isRead ? 0.65 : 1,
-                  transition: 'opacity .15s',
-                }}
-              >
-                {/* Unread dot */}
-                <div style={{
-                  width: 8, height: 8, borderRadius: '50%', marginTop: 5, flexShrink: 0,
-                  background: n.isRead ? 'var(--text-muted)' : 'var(--primary-500)',
-                  boxShadow: !n.isRead ? '0 0 6px var(--primary-500)' : 'none',
-                }} />
-
-                {/* Icon — always 📝 for new_post */}
-                <div style={{ fontSize: 16, width: 22, textAlign: 'center', flexShrink: 0 }}>📝</div>
-
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: !n.isRead ? 600 : 400, color: 'var(--text-primary)', marginBottom: 2 }}>
-                    {n.title}
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
-                    {n.message}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, display: 'flex', gap: 8, alignItems: 'center' }}>
-                    {timeAgo(n.createdAt)}
-                    {!n.isRead && (
-                      <span style={{ color: 'var(--primary-400)', fontSize: 10 }}>• Click to mark read</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+      <section
+        aria-label="Notifications"
+        aria-busy={loading}
+        className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-primary)] bg-[var(--bg-card)]"
+      >
+        {body}
+      </section>
+    </main>
   );
 }

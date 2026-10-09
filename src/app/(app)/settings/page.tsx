@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
@@ -19,6 +19,11 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { sanitizeImageUrl } from "@/lib/utils";
 import Image from "next/image";
+import { useTheme } from "@/hooks/useTheme";
+import { DeleteAccountModal } from "./_components/DeleteAccountModal";
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+const ACCEPTED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/gif"]);
 
 // ─── Shared card styles ────────────────────────────────────────────────────────
 const card: React.CSSProperties = {
@@ -43,160 +48,6 @@ const body: React.CSSProperties = {
   gap: 12,
 };
 
-// ─── Delete Account Modal ─────────────────────────────────────────────────────
-function DeleteAccountModal({
-  onConfirm,
-  onCancel,
-  loading,
-}: {
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading: boolean;
-}) {
-  const [confirmText, setConfirmText] = useState("");
-  const ready = confirmText === "DELETE";
-
-  return (
-    <div
-      onClick={onCancel}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.75)",
-        backdropFilter: "blur(6px)",
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 16,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid rgba(239,68,68,0.3)",
-          borderRadius: 18,
-          padding: "28px 24px",
-          width: 420,
-          maxWidth: "100%",
-        }}
-      >
-        <div
-          style={{
-            width: 56,
-            height: 56,
-            borderRadius: "50%",
-            background: "rgba(239,68,68,0.12)",
-            border: "2px solid rgba(239,68,68,0.3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 24,
-            margin: "0 auto 18px",
-          }}
-        >
-          ⚠️
-        </div>
-        <h2
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontSize: 18,
-            fontWeight: 800,
-            textAlign: "center",
-            marginBottom: 8,
-            color: "var(--text-primary)",
-          }}
-        >
-          Delete Your Account?
-        </h2>
-        <p
-          style={{
-            fontSize: 13,
-            color: "var(--text-secondary)",
-            textAlign: "center",
-            lineHeight: 1.65,
-            marginBottom: 20,
-          }}
-        >
-          This permanently erases your profile, follows, and notifications.
-          <br />
-          <strong style={{ color: "#ef4444" }}>This cannot be undone.</strong>
-        </p>
-
-        {/* Google re-auth note */}
-        <div
-          style={{
-            background: "rgba(59,130,246,0.08)",
-            border: "1px solid rgba(59,130,246,0.2)",
-            borderRadius: 8,
-            padding: "10px 14px",
-            fontSize: 12,
-            color: "var(--text-secondary)",
-            lineHeight: 1.6,
-            marginBottom: 16,
-          }}
-        >
-          🔑 A Google sign-in popup will appear to verify your identity before
-          deletion.
-        </div>
-
-        <div style={{ marginBottom: 20 }}>
-          <label
-            style={{
-              display: "block",
-              fontSize: 12,
-              fontWeight: 600,
-              color: "var(--text-secondary)",
-              marginBottom: 5,
-            }}
-          >
-            Type <strong style={{ color: "#ef4444" }}>DELETE</strong> to confirm
-          </label>
-          <input
-            className="input"
-            placeholder="DELETE"
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            style={{ width: "100%", fontFamily: "monospace", letterSpacing: 2 }}
-          />
-        </div>
-
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button
-            className="btn btn-outline"
-            onClick={onCancel}
-            disabled={loading}
-          >
-            Cancel
-          </button>
-          <button
-            disabled={!ready || loading}
-            onClick={onConfirm}
-            style={{
-              padding: "9px 20px",
-              borderRadius: "var(--radius-lg)",
-              border: "none",
-              background:
-                ready && !loading
-                  ? "linear-gradient(135deg,#ef4444,#dc2626)"
-                  : "rgba(239,68,68,0.3)",
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: ready && !loading ? "pointer" : "not-allowed",
-              fontFamily: "var(--font-body)",
-              transition: "all .15s",
-            }}
-          >
-            {loading ? "⏳ Deleting…" : "🗑 Delete My Account"}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function SettingsPage() {
   const router = useRouter();
@@ -209,10 +60,13 @@ export default function SettingsPage() {
     contactInfo: "",
     universityName: "",
   });
+  const profileDirty = useRef(false);
+  const syncedProfileUid = useRef<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [previewURL, setPreviewURL] = useState<string | null>(null);
+  const temporaryPreviewURL = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Danger zone
@@ -221,36 +75,40 @@ export default function SettingsPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
 
-  // Lazy init — reads localStorage on first render; no useEffect needed.
-  const [theme, setTheme] = useState<"dark" | "light">(() => {
-    if (typeof window === "undefined") return "dark";
-    return (
-      (localStorage.getItem("opportune-theme") as "dark" | "light") ?? "dark"
-    );
-  });
+  const { theme, toggleTheme } = useTheme();
 
-  const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    if (next === "light") document.documentElement.dataset.theme = "light";
-    else delete document.documentElement.dataset.theme;
-    localStorage.setItem("opportune-theme", next);
-  };
-
-  // Populate form from profile whenever it loads/refreshes from context.
-  // setState inside useEffect is intentional here — syncing external data to local form state.
   useEffect(() => {
-    if (userProfile) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!userProfile) return;
+    const isNewProfile = syncedProfileUid.current !== userProfile.uid;
+    if (isNewProfile || !profileDirty.current) {
+      // Sync the editable form only when the active account changes or it has no unsaved edits.
       setForm({
         displayName: userProfile.displayName ?? "",
         bio: userProfile.bio ?? "",
         contactInfo: userProfile.contactInfo ?? "",
         universityName: userProfile.universityName ?? "",
       });
+      if (isNewProfile) profileDirty.current = false;
+      syncedProfileUid.current = userProfile.uid;
+    }
+    if (!temporaryPreviewURL.current) {
       setPreviewURL(userProfile.photoURL);
     }
   }, [userProfile]);
+
+  useEffect(
+    () => () => {
+      if (temporaryPreviewURL.current) {
+        URL.revokeObjectURL(temporaryPreviewURL.current);
+      }
+    },
+    [],
+  );
+
+  const updateProfileForm = (updates: Partial<typeof form>) => {
+    setForm((current) => ({ ...current, ...updates }));
+    profileDirty.current = true;
+  };
 
   const initials = userProfile?.displayName
     ? userProfile.displayName
@@ -265,24 +123,83 @@ export default function SettingsPage() {
 
   const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file || !user) return;
+    if (!ACCEPTED_AVATAR_TYPES.has(file.type)) {
+      toast.error("Choose a JPG, PNG, or GIF image.");
+      return;
+    }
+    if (file.size > MAX_AVATAR_SIZE) {
+      toast.error("Profile images must be 5 MB or smaller.");
+      return;
+    }
+
     const oldPhotoURL = userProfile?.photoURL ?? null;
-    setPreviewURL(URL.createObjectURL(file));
+    const nextPreviewURL = URL.createObjectURL(file);
+    if (temporaryPreviewURL.current) {
+      URL.revokeObjectURL(temporaryPreviewURL.current);
+    }
+    temporaryPreviewURL.current = nextPreviewURL;
+    setPreviewURL(nextPreviewURL);
     setUploading(true);
     setUploadProgress(0);
+    let uploadedPhotoURL: string | null = null;
+    let profileUpdated = false;
     try {
-      const url = await uploadFile(
+      uploadedPhotoURL = await uploadFile(
         file,
         `avatars/${user.uid}/${Date.now()}_${file.name}`,
         (pct) => setUploadProgress(pct),
       );
-      await updateUserProfile(user.uid, { photoURL: url });
-      await refreshUserProfile();
-      toast.success("Profile picture updated!");
-      if (oldPhotoURL) deleteFile(oldPhotoURL);
-    } catch {
-      toast.error("Failed to upload photo");
-      setPreviewURL(userProfile?.photoURL ?? null);
+      await updateUserProfile(user.uid, { photoURL: uploadedPhotoURL });
+      profileUpdated = true;
+      URL.revokeObjectURL(nextPreviewURL);
+      temporaryPreviewURL.current = null;
+      setPreviewURL(uploadedPhotoURL);
+      let refreshFailed = false;
+      try {
+        await refreshUserProfile();
+      } catch (error) {
+        refreshFailed = true;
+        console.error(
+          "[SettingsPage] Failed to refresh profile after photo update:",
+          error,
+        );
+      }
+      if (oldPhotoURL) {
+        try {
+          await deleteFile(oldPhotoURL);
+        } catch (error) {
+          console.error(
+            "[SettingsPage] Failed to remove previous profile photo:",
+            error,
+          );
+        }
+      }
+      if (refreshFailed) {
+        toast.error(
+          "Photo updated, but profile data could not refresh. Reload the page.",
+        );
+      } else {
+        toast.success("Profile picture updated!");
+      }
+    } catch (error) {
+      if (temporaryPreviewURL.current === nextPreviewURL) {
+        URL.revokeObjectURL(nextPreviewURL);
+        temporaryPreviewURL.current = null;
+      }
+      if (uploadedPhotoURL && !profileUpdated) {
+        await deleteFile(uploadedPhotoURL);
+      }
+      console.error("[SettingsPage] Failed to update profile photo:", error);
+      toast.error(
+        profileUpdated
+          ? "Photo was saved, but the settings update did not finish. Reload the page."
+          : "Failed to upload photo",
+      );
+      setPreviewURL(
+        profileUpdated ? uploadedPhotoURL : (userProfile?.photoURL ?? null),
+      );
     } finally {
       setUploading(false);
       setUploadProgress(0);
@@ -301,6 +218,7 @@ export default function SettingsPage() {
         contactInfo: form.contactInfo.trim(),
         universityName: form.universityName.trim(),
       });
+      profileDirty.current = false;
       await refreshUserProfile();
       toast.success("Profile saved!");
     } catch {
@@ -314,7 +232,7 @@ export default function SettingsPage() {
     setSigningOut(true);
     try {
       await signOut(auth);
-      router.push("/");
+      router.push("/feed");
     } catch {
       toast.error("Failed to sign out");
       setSigningOut(false);
@@ -332,27 +250,48 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCancelDelete = useCallback(() => {
+    if (!deletingAccount) setShowDeleteModal(false);
+  }, [deletingAccount]);
+
   const handleDeleteAccount = async () => {
     if (!user) return;
     setDeletingAccount(true);
+    let profileDataRemoved = false;
     try {
-      // Re-authenticate via Google popup
       await reauthenticateWithPopup(user, new GoogleAuthProvider());
-      // Purge Firestore data
       await deleteUserAccount(user.uid);
-      // Delete Firebase Auth account
+      profileDataRemoved = true;
       await deleteUser(user);
       toast.success("Account deleted. Goodbye 👋");
-      router.push("/");
+      router.push("/feed");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "";
-      if (msg.includes("popup-closed") || msg.includes("cancelled")) {
+      const errorCode =
+        typeof err === "object" && err !== null && "code" in err
+          ? String(err.code)
+          : "";
+      if (
+        errorCode.includes("popup-closed") ||
+        errorCode.includes("cancelled")
+      ) {
         toast.error("Re-authentication cancelled — account not deleted");
+      } else if (profileDataRemoved) {
+        console.error(
+          "[SettingsPage] Account data was removed, but Firebase Auth deletion failed:",
+          err,
+        );
+        toast.error(
+          "Your profile data was removed, but the sign-in account could not be deleted. Keep this session open and try again.",
+          { duration: 8000 },
+        );
       } else {
-        toast.error("Failed to delete account. Please try again.");
+        console.error("[SettingsPage] Account deletion failed:", err);
+        toast.error(
+          "Account deletion did not complete. Some profile data may have been removed; please try again.",
+          { duration: 8000 },
+        );
       }
       setDeletingAccount(false);
-      setShowDeleteModal(false);
     }
   };
 
@@ -372,6 +311,7 @@ export default function SettingsPage() {
               Sign in to manage your account and preferences.
             </p>
             <button
+              type="button"
               className="btn btn-primary"
               onClick={handleSignIn}
               disabled={signingIn}
@@ -475,6 +415,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <button
+              type="button"
               className="btn btn-outline btn-sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
@@ -483,12 +424,12 @@ export default function SettingsPage() {
               {uploading ? "⏳ Uploading…" : "📷 Change Photo"}
             </button>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-              JPG, PNG, GIF · Stored on Cloudinary
+              JPG, PNG, or GIF · Maximum 5 MB · Stored on Cloudinary
             </div>
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/gif"
               style={{ display: "none" }}
               onChange={handlePhotoSelect}
             />
@@ -519,7 +460,7 @@ export default function SettingsPage() {
                 placeholder="Your name"
                 value={form.displayName}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, displayName: e.target.value }))
+                  updateProfileForm({ displayName: e.target.value })
                 }
               />
             </div>
@@ -530,7 +471,7 @@ export default function SettingsPage() {
                 placeholder="e.g., NUST, Islamabad"
                 value={form.universityName}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, universityName: e.target.value }))
+                  updateProfileForm({ universityName: e.target.value })
                 }
               />
             </div>
@@ -542,7 +483,7 @@ export default function SettingsPage() {
               rows={3}
               placeholder="Tell people about yourself…"
               value={form.bio}
-              onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
+              onChange={(e) => updateProfileForm({ bio: e.target.value })}
               style={{ resize: "vertical" }}
             />
           </div>
@@ -558,7 +499,7 @@ export default function SettingsPage() {
               placeholder="LinkedIn URL or phone number"
               value={form.contactInfo}
               onChange={(e) =>
-                setForm((p) => ({ ...p, contactInfo: e.target.value }))
+                updateProfileForm({ contactInfo: e.target.value })
               }
             />
           </div>
@@ -578,6 +519,7 @@ export default function SettingsPage() {
             />
           </div>
           <button
+            type="button"
             className="btn btn-primary btn-sm"
             onClick={handleSaveProfile}
             disabled={saving}
@@ -615,16 +557,17 @@ export default function SettingsPage() {
             </div>
           </div>
           <button
+            type="button"
             onClick={toggleTheme}
             aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
             style={{
               width: 52,
               height: 28,
               borderRadius: 999,
-              border: "none",
+              border: "1px solid var(--border-primary)",
               cursor: "pointer",
               background:
-                theme === "dark" ? "var(--gradient-primary)" : "#d1d5db",
+                theme === "dark" ? "var(--gradient-primary)" : "var(--bg-tertiary)",
               position: "relative",
               transition: "background .25s",
               flexShrink: 0,
@@ -691,6 +634,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <button
+              type="button"
               className="btn btn-outline btn-sm"
               onClick={handleSignOut}
               disabled={signingOut}
@@ -724,6 +668,7 @@ export default function SettingsPage() {
               </div>
             </div>
             <button
+              type="button"
               onClick={() => setShowDeleteModal(true)}
               style={{
                 padding: "7px 14px",
@@ -755,7 +700,7 @@ export default function SettingsPage() {
       {showDeleteModal && (
         <DeleteAccountModal
           onConfirm={handleDeleteAccount}
-          onCancel={() => !deletingAccount && setShowDeleteModal(false)}
+          onCancel={handleCancelDelete}
           loading={deletingAccount}
         />
       )}
