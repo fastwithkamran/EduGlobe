@@ -11,7 +11,7 @@ export function timeAgo(date: unknown): string {
   const d =
     (date as { toDate?: () => Date }).toDate?.() ??
     new Date(date as string | number);
-  if (isNaN(d.getTime())) return "just now";
+  if (Number.isNaN(d.getTime())) return "just now";
   const s = Math.floor((Date.now() - d.getTime()) / 1000);
   if (s < 60) return "just now";
   if (s < 3_600) return `${Math.floor(s / 60)}m ago`;
@@ -21,13 +21,13 @@ export function timeAgo(date: unknown): string {
 }
 
 /** Get 2-letter initials from a display name */
-export function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+export function getInitials(name?: string | null): string {
+  const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  // First + LAST name ("John Michael Smith" → "JS", not "JM").
+  // Array.from keeps emoji / astral characters intact (w[0] would split them).
+  const first = Array.from(words[0] ?? "")[0] ?? "";
+  const last = words.length > 1 ? (Array.from(words[words.length - 1]!)[0] ?? "") : "";
+  return (first + last).toUpperCase() || "?";
 }
 
 /** Background tint per post type */
@@ -70,12 +70,71 @@ export const TYPE_EMOJI: Record<PostType, string> = {
  *  Negative = past, 0 = today */
 export function daysUntil(dateStr?: string): number | null {
   if (!dateStr) return null;
-  return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+  const date = dateOnly
+    ? new Date(
+        Number(dateOnly[1]),
+        Number(dateOnly[2]) - 1,
+        Number(dateOnly[3]),
+      )
+    : new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return null;
+  const targetDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+  ).getTime();
+  const today = new Date();
+  const currentDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  ).getTime();
+  return Math.round((targetDay - currentDay) / 86_400_000);
+}
+
+/** Format a YYYY-MM-DD value as a date without timezone-induced day shifts. */
+export function formatOpportunityDate(value?: string): string | null {
+  if (!value) return null;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const date = dateOnly
+    ? new Date(
+        Number(dateOnly[1]),
+        Number(dateOnly[2]) - 1,
+        Number(dateOnly[3]),
+      )
+    : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-PK", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+/** Return only absolute HTTP(S) URLs suitable for external links. */
+export function safeExternalUrl(value?: string): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
+
+  // Organizers often paste "example.com/apply" without a scheme. A scheme is
+  // "word:" NOT followed by a digit (that would be a port, e.g. example.com:8080).
+  const hasScheme = /^[a-z][a-z0-9+.-]*:(?!\d)/i.test(trimmed);
+  const candidate = hasScheme ? trimmed : `https://${trimmed}`;
+
+  try {
+    const url = new URL(candidate);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    // Reject scheme-less junk like "hello" that would become https://hello/
+    if (!hasScheme && !url.hostname.includes(".")) return null;
+    return url.toString();
+  } catch {
+    return null;
+  }
 }
 
 /** Post types that carry opportunity metadata */
 export const OPPORTUNITY_TYPES: PostType[] = [
-  "announcement",
   "event",
   "hackathon",
   "scholarship",

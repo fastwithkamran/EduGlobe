@@ -8,14 +8,14 @@
  * sanitized value is no longer treated as user-controlled data.
  */
 export function sanitizeImageUrl(url: string | null | undefined): string {
-  if (!url) return '';
+  if (!url) return "";
   try {
     const u = new URL(url);
-    if (['https:', 'http:', 'blob:'].includes(u.protocol)) {
+    if (["https:", "http:", "blob:"].includes(u.protocol)) {
       return u.toString();
     }
   } catch {
     // Not a valid absolute URL — reject it
   }
-  return '';
+  return "";
 }

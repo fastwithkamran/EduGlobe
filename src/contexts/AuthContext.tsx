@@ -1,164 +1,227 @@
-'use client';
+"use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   User as FirebaseUser,
   onAuthStateChanged,
   signOut,
   GoogleAuthProvider,
   signInWithPopup,
-} from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
-import { getUserProfile } from '@/lib/firestore';
-import type { UserProfile } from '@/types';
+} from "firebase/auth";
+import { doc, runTransaction, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+import { getUserProfile } from "@/lib/firestore";
+import type { UserProfile } from "@/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AuthContextType {
-  user:               FirebaseUser | null;
-  userProfile:        UserProfile  | null;
-  /** True until BOTH auth state and profile fetch are resolved. */
-  loading:            boolean;
-  /** True when the signed-in user has no role yet (first-time setup). */
-  needsOnboarding:    boolean;
+  user: FirebaseUser | null;
+  userProfile: UserProfile | null;
+  /** True while Firebase auth state or the signed-in user's profile is loading. */
+  loading: boolean;
+  /** Profile load/refresh error, if any. */
+  profileError: Error | null;
   /**
    * Derived from `userProfile.role === 'super_admin'`.
    * To grant access: set `role: "super_admin"` on the user's Firestore doc.
-   * No email is hardcoded in the client bundle.
    */
-  isSuperAdmin:       boolean;
-  logout:             () => Promise<void>;
+  isSuperAdmin: boolean;
+  logout: () => Promise<void>;
   /** Triggers the Google sign-in popup. State is managed by onAuthStateChanged. */
-  loginWithGoogle:    () => Promise<void>;
-  setUserProfile:     React.Dispatch<React.SetStateAction<UserProfile | null>>;
-  setNeedsOnboarding: React.Dispatch<React.SetStateAction<boolean>>;
+  loginWithGoogle: () => Promise<void>;
   refreshUserProfile: () => Promise<void>;
 }
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
-const AuthContext = createContext<AuthContextType>({
-  user:               null,
-  userProfile:        null,
-  loading:            true,
-  needsOnboarding:    false,
-  isSuperAdmin:       false,
-  logout:             async () => {},
-  loginWithGoogle:    async () => {},
-  setUserProfile:     () => {},
-  setNeedsOnboarding: () => {},
-  refreshUserProfile: async () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user,            setUser]            = useState<FirebaseUser | null>(null);
-  const [userProfile,     setUserProfile]     = useState<UserProfile  | null>(null);
-  const [loading,         setLoading]         = useState(true);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<Error | null>(null);
+  const authStateVersion = useRef(0);
 
-  // Role-based — no email hardcoded in the bundle.
-  // Grant super admin by setting role:"super_admin" in Firestore users/{uid}.
-  const isSuperAdmin = userProfile?.role === 'super_admin';
+  const isSuperAdmin = userProfile?.role === "super_admin";
 
   // ── Single source of truth for auth state ─────────────────────────────────
   useEffect(() => {
+    let active = true;
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      const version = ++authStateVersion.current;
+      setLoading(true);
+      setProfileError(null);
+
       if (!firebaseUser) {
-        // Signed out
+        if (!active || version !== authStateVersion.current) return;
         setUser(null);
         setUserProfile(null);
-        setNeedsOnboarding(false);
         setLoading(false);
         return;
       }
 
+      setUser(firebaseUser);
+      setUserProfile(null);
+
       try {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userSnap   = await getDoc(userDocRef);
-
-        if (!userSnap.exists()) {
-          // ── First sign-in: write skeleton doc ──────────────────────────────
-          await setDoc(userDocRef, {
-            uid:           firebaseUser.uid,
-            email:         firebaseUser.email        ?? '',
-            displayName:   firebaseUser.displayName  ?? 'New User',
-            photoURL:      firebaseUser.photoURL      ?? null,
-            role:          null,
-            societyId:     null,
-            universityName:'',
-            bio:           '',
-            contactInfo:   '',
-            createdAt:     serverTimestamp(),
-            updatedAt:     serverTimestamp(),
+        // ── First sign-in: create the skeleton doc ──────────────────────────
+        // A transaction makes check-then-create atomic. A plain getDoc + setDoc
+        // let two tabs both "create" the doc; the second write is an UPDATE
+        // that the rules reject, surfacing a bogus profile error.
+        const userDocRef = doc(db, "users", firebaseUser.uid);
+        await runTransaction(db, async (transaction) => {
+          const userSnap = await transaction.get(userDocRef);
+          if (userSnap.exists()) return;
+          transaction.set(userDocRef, {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email ?? "",
+            displayName: firebaseUser.displayName ?? "New User",
+            photoURL: firebaseUser.photoURL ?? null,
+            role: null,
+            societyId: null,
+            universityName: "",
+            bio: "",
+            contactInfo: "",
+            createdAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
           });
+        });
 
-          // Force-refresh the ID token so Firestore security rules see the
-          // fully-propagated OAuth token on the very next read.
-          // This replaces the old window.location.reload() — no page flash.
-          await firebaseUser.getIdToken(/* forceRefresh= */ true);
-        }
-
-        // ── Fetch profile (new and returning users converge here) ───────────
         const profile = await getUserProfile(firebaseUser.uid);
-        setUser(firebaseUser);
+        if (!active || version !== authStateVersion.current) return;
         setUserProfile(profile);
-        setNeedsOnboarding(!profile?.role);
       } catch (err) {
-        // Network / Firestore error — still unblock the app.
-        console.error('[AuthContext] Error during auth state resolution:', err);
-        setUser(firebaseUser);
+        if (!active || version !== authStateVersion.current) return;
+        const error =
+          err instanceof Error
+            ? err
+            : new Error("Failed to load the user profile");
+        console.error(
+          "[AuthContext] Error during auth state resolution:",
+          error,
+        );
         setUserProfile(null);
+        setProfileError(error);
+      } finally {
+        if (active && version === authStateVersion.current) {
+          setLoading(false);
+        }
       }
-
-      setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      active = false;
+      authStateVersion.current += 1;
+      unsubscribe();
+    };
   }, []);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
 
-  const refreshUserProfile = async () => {
-    if (!user) return;
-    const profile = await getUserProfile(user.uid);
-    if (profile) {
-      setUserProfile(profile);
-      setNeedsOnboarding(!profile.role);
+  // Reads auth.currentUser instead of the `user` state so the callback is
+  // stable (and never acts on a stale closure after a quick account switch).
+  const refreshUserProfile = useCallback(async () => {
+    const current = auth.currentUser;
+    if (!current) return;
+    const uid = current.uid;
+    const version = authStateVersion.current;
+    setProfileError(null);
+    try {
+      const profile = await getUserProfile(uid);
+      if (
+        auth.currentUser?.uid === uid &&
+        version === authStateVersion.current
+      ) {
+        setUserProfile(profile);
+      }
+    } catch (err) {
+      const error =
+        err instanceof Error
+          ? err
+          : new Error("Failed to refresh the user profile");
+      if (
+        auth.currentUser?.uid === uid &&
+        version === authStateVersion.current
+      ) {
+        setProfileError(error);
+      }
+      throw error;
     }
-  };
+  }, []);
 
-  const logout = async () => {
-    // Clear state immediately for instant UI response;
-    // onAuthStateChanged will also fire with null — that's fine.
-    setUser(null);
-    setUserProfile(null);
-    setNeedsOnboarding(false);
+  const logout = useCallback(async () => {
+    // The auth listener owns state updates, including the signed-out transition.
     await signOut(auth);
-  };
+  }, []);
 
   /**
    * Triggers the Google sign-in popup only.
-   * ALL state updates (user, userProfile, needsOnboarding) are handled
-   * exclusively by onAuthStateChanged — no race conditions, no duplicate reads.
+   * State updates are handled exclusively by onAuthStateChanged.
+   * Closing the popup is a normal user action, not an error to surface.
    */
-  const loginWithGoogle = async (): Promise<void> => {
+  const loginWithGoogle = useCallback(async (): Promise<void> => {
     const provider = new GoogleAuthProvider();
-    provider.setCustomParameters({ prompt: 'select_account' });
-    await signInWithPopup(auth, provider);
-  };
+    provider.setCustomParameters({ prompt: "select_account" });
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      const code = (err as { code?: string } | null)?.code;
+      if (
+        code === "auth/popup-closed-by-user" ||
+        code === "auth/cancelled-popup-request"
+      ) {
+        return;
+      }
+      throw err;
+    }
+  }, []);
+
+  // Without memoizing, every provider render handed consumers a new object and
+  // re-rendered the whole app.
+  const value = useMemo<AuthContextType>(
+    () => ({
+      user,
+      userProfile,
+      loading,
+      profileError,
+      isSuperAdmin,
+      logout,
+      loginWithGoogle,
+      refreshUserProfile,
+    }),
+    [
+      user,
+      userProfile,
+      loading,
+      profileError,
+      isSuperAdmin,
+      logout,
+      loginWithGoogle,
+      refreshUserProfile,
+    ],
+  );
 
   return (
-    <AuthContext.Provider value={{
-      user, userProfile, loading, needsOnboarding, isSuperAdmin,
-      logout, loginWithGoogle, setUserProfile, setNeedsOnboarding,
-      refreshUserProfile,
-    }}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
   );
 };

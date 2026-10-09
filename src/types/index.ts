@@ -2,7 +2,7 @@
 
 // ─── User & Auth ─────────────────────────────────────────────────────────────
 
-export type UserRole = "viewer" | "admin" | "super_admin";
+export type UserRole = "admin" | "super_admin";
 
 export interface UserProfile {
   uid: string;
@@ -10,7 +10,7 @@ export interface UserProfile {
   displayName: string;
   photoURL: string | null;
   role: UserRole | null;
-  universityName: string; // University/institution the user belongs to
+  universityName: string;
   societyId: string | null; // ID of the society they administer (null if none)
   bio: string;
   contactInfo?: string;
@@ -20,31 +20,26 @@ export interface UserProfile {
 
 // ─── Society ──────────────────────────────────────────────────────────────────
 
-export type SocietyPrivacy = "public"; // All societies are publicly discoverable
-
-/** Where the community lives — all fields optional */
 export interface CommunityLinks {
-  discord?: string; // Discord server invite
-  whatsapp?: string; // WhatsApp group link
-  linkedin?: string; // LinkedIn page or profile
-  twitter?: string; // Twitter/X handle URL
-  instagram?: string; // Instagram page URL
+  discord?: string;
+  whatsapp?: string;
+  linkedin?: string;
+  twitter?: string;
+  instagram?: string;
 }
 
 export interface Society {
   id: string;
   name: string;
-  organization: string; // University, company, or club running this society
+  organization: string;
   city: string;
   country: string;
   description: string;
-  privacy: SocietyPrivacy;
   logoURL: string;
   bannerURL: string;
   website: string;
   contactEmail: string;
   communityLinks?: CommunityLinks;
-  memberCount: number;
   followerCount: number;
   isVerified: boolean;
   createdBy: string; // uid of creator (auto-becomes admin)
@@ -56,18 +51,16 @@ export interface Society {
 // ─── Posts ────────────────────────────────────────────────────────────────────
 
 export type PostType =
-  | "announcement"
-  | "event"
-  | "hackathon"
-  | "scholarship"
-  | "internship";
-
-export type PostVisibility = "public"; // All posts are public — member system removed
+  "announcement" | "event" | "hackathon" | "scholarship" | "internship";
 
 /** Structured metadata for posts */
 export interface OpportunityMeta {
   deadline?: string;
+  startDate?: string;
+  endDate?: string;
   prize?: string;
+  funding?: string;
+  eligibility?: string;
   location?: string;
   skills?: string[];
   applyLink?: string;
@@ -84,12 +77,11 @@ export interface Post {
   authorName: string;
   content: string;
   type: PostType;
-  visibility: PostVisibility;
   attachments: PostAttachment[];
   likeCount: number;
   commentCount: number;
   likedBy: string[];
-  opportunityMeta?: OpportunityMeta; // Only on hackathon/scholarship/internship posts
+  opportunityMeta?: OpportunityMeta;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -104,7 +96,6 @@ export interface PostAttachment {
 
 export interface PostComment {
   id: string;
-  postId: string;
   authorId: string;
   authorName: string;
   authorPhotoURL: string | null;
@@ -122,25 +113,15 @@ export interface Follow {
 }
 
 // ─── Notifications ────────────────────────────────────────────────────────────
-// Only 'new_post' actively triggers notifications (from followed societies).
-
-export type NotificationType =
-  | "new_post"
-  | "post_like"
-  | "post_comment"
-  | "society_followed"
-  | "system";
 
 export interface Notification {
   id: string;
   userId: string;
-  type: NotificationType;
   title: string;
   message: string;
   isRead: boolean;
   relatedPostId?: string;
   relatedSocietyId?: string;
-  relatedUserId?: string;
   createdAt: Date;
 }
 
