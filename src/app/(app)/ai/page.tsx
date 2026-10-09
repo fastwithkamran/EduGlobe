@@ -1,8 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/contexts/AuthContext";
+import { sanitizeImageUrl } from "@/lib/utils";
 import type { AIMessage } from "@/types";
+import { AIMessageContent } from "./_components/AIMessageContent";
 
 // ─── Quick prompt suggestions — opportunity discovery focused ─────────────────
 const QUICK_PROMPTS = [
@@ -35,155 +38,22 @@ function timeLabel(date: Date): string {
   });
 }
 
-// Render the Markdown patterns used in AI responses without injecting HTML.
-function renderInline(text: string, keyPrefix: string) {
-  const pattern =
-    /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)|\(([^)\n]+)\)\((https?:\/\/[^)\s]+)\)|(https?:\/\/[^\s<>"']+)|\*\*\*([^*]+)\*\*\*|\*\*([^*]+)\*\*|__([^_]+)__|(?<!\*)\*([^*\n]+)\*(?!\*)|(?<!_)_([^_\n]+)_(?!_)/g;
-  const parts = [];
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let partIndex = 0;
-
-  while ((match = pattern.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(
-        <span key={`${keyPrefix}-${partIndex++}`}>
-          {text.slice(lastIndex, match.index)}
-        </span>,
-      );
-    }
-
-    const markdownLabel = match[1] ?? match[3];
-    const link = match[2] ?? match[4] ?? match[5];
-    if (link) {
-      const trailing = match[5]?.match(/[.,!?;:]+$/)?.[0] ?? "";
-      const href = trailing ? link.slice(0, -trailing.length) : link;
-      parts.push(
-        <a
-          key={`${keyPrefix}-${partIndex++}`}
-          href={href}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{
-            color: "var(--primary-400)",
-            textDecoration: "underline",
-            textUnderlineOffset: 2,
-            fontWeight: 600,
-          }}
-        >
-          {markdownLabel ?? href}
-        </a>,
-      );
-      if (trailing) {
-        parts.push(
-          <span key={`${keyPrefix}-${partIndex++}`}>{trailing}</span>,
-        );
-      }
-    } else if (match[6]) {
-      parts.push(
-        <strong key={`${keyPrefix}-${partIndex++}`}>
-          <em>{match[6]}</em>
-        </strong>,
-      );
-    } else if (match[7] || match[8]) {
-      parts.push(
-        <strong key={`${keyPrefix}-${partIndex++}`}>
-          {match[7] ?? match[8]}
-        </strong>,
-      );
-    } else if (match[9] || match[10]) {
-      parts.push(
-        <em key={`${keyPrefix}-${partIndex++}`}>{match[9] ?? match[10]}</em>,
-      );
-    }
-
-    lastIndex = pattern.lastIndex;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(
-      <span key={`${keyPrefix}-${partIndex++}`}>{text.slice(lastIndex)}</span>,
-    );
-  }
-
-  return parts;
-}
-
-function renderContent(text: string, isUser: boolean) {
-  const lines = text.replace(/\r\n?/g, "\n").split("\n");
-  const blocks = [];
-  let lineIndex = 0;
-
-  while (lineIndex < lines.length) {
-    const line = lines[lineIndex];
-    if (/^\s*(?:(?:\*\s*){3,}|(?:-\s*){3,}|(?:_\s*){3,})$/.test(line)) {
-      blocks.push(
-        <hr
-          key={`rule-${lineIndex}`}
-          style={{
-            border: 0,
-            borderTop: "1px solid var(--border-primary)",
-            margin: "4px 0 12px",
-          }}
-        />,
-      );
-      lineIndex += 1;
-      continue;
-    }
-
-    const listMatch = line.match(/^\s*(?:([•*-])|(\d+[.)]))\s+(.+)$/);
-
-    if (listMatch) {
-      const isOrdered = Boolean(listMatch[2]);
-      const items = [];
-      while (lineIndex < lines.length) {
-        const itemMatch = lines[lineIndex].match(
-          /^\s*(?:([•*-])|(\d+[.)]))\s+(.+)$/,
-        );
-        if (!itemMatch || Boolean(itemMatch[2]) !== isOrdered) break;
-        items.push(itemMatch[3]);
-        lineIndex += 1;
-      }
-
-      const List = isOrdered ? "ol" : "ul";
-      blocks.push(
-        <List
-          key={`list-${lineIndex}`}
-          style={{ margin: "0 0 8px 18px", padding: 0 }}
-        >
-          {items.map((item, index) => (
-            <li key={index} style={{ paddingLeft: 2 }}>
-              {renderInline(item, `list-${lineIndex}-${index}`)}
-            </li>
-          ))}
-        </List>,
-      );
-      continue;
-    }
-
-    if (line.trim()) {
-      const heading = line.match(/^#{1,3}\s+(.+)$/);
-      blocks.push(
-        <p
-          key={`line-${lineIndex}`}
-          style={{
-            margin: "0 0 8px",
-            fontSize: heading ? 14 : undefined,
-            fontWeight: heading ? 700 : undefined,
-            color: isUser ? "#fff" : undefined,
-          }}
-        >
-          {renderInline(heading?.[1] ?? line, `line-${lineIndex}`)}
-        </p>,
-      );
-    }
-    lineIndex += 1;
-  }
-
-  return blocks;
-}
-
 const MAX_MESSAGE_LENGTH = 1_000;
+const CHAT_SESSION_KEY = "opportune-ai-chat-v1";
+
+type StoredAIMessage = Omit<AIMessage, "timestamp"> & { timestamp: string };
+
+function isStoredMessage(value: unknown): value is StoredAIMessage {
+  if (typeof value !== "object" || value === null) return false;
+
+  const message = value as Partial<AIMessage>;
+  return (
+    typeof message.id === "string" &&
+    (message.role === "user" || message.role === "assistant") &&
+    typeof message.content === "string" &&
+    typeof message.timestamp === "string"
+  );
+}
 
 export default function AIPage() {
   const { user } = useAuth();
@@ -196,13 +66,77 @@ export default function AIPage() {
     },
   ]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [requestActive, setRequestActive] = useState(false);
+  const [waitingForResponse, setWaitingForResponse] = useState(false);
+  const [announcement, setAnnouncement] = useState("");
+  const [sessionRestored, setSessionRestored] = useState(false);
+  const storageErrorReported = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    let restoredMessages: AIMessage[] | undefined;
+    let restoreError: unknown;
+
+    try {
+      const stored = sessionStorage.getItem(CHAT_SESSION_KEY);
+      if (stored) {
+        const parsed: unknown = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const validMessages = parsed
+            .filter(isStoredMessage)
+            .map((message) => ({
+              ...message,
+              timestamp: new Date(message.timestamp),
+            }))
+            .filter((message) => !Number.isNaN(message.timestamp.getTime()));
+
+          if (validMessages.length > 0) {
+            restoredMessages = validMessages;
+          } else {
+            console.warn(
+              "[AIPage] Saved conversation was invalid; starting a new conversation.",
+            );
+          }
+        } else {
+          console.warn(
+            "[AIPage] Saved conversation had an invalid format; starting a new conversation.",
+          );
+        }
+      }
+    } catch (error) {
+      restoreError = error;
+    }
+
+    const restoreTimer = window.setTimeout(() => {
+      if (restoredMessages) setMessages(restoredMessages);
+      if (restoreError) {
+        console.error("[AIPage] Failed to restore conversation:", restoreError);
+        setAnnouncement("The previous conversation could not be restored.");
+      }
+      setSessionRestored(true);
+    }, 0);
+
+    return () => window.clearTimeout(restoreTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!sessionRestored) return;
+
+    try {
+      sessionStorage.setItem(CHAT_SESSION_KEY, JSON.stringify(messages));
+      storageErrorReported.current = false;
+    } catch (error) {
+      if (!storageErrorReported.current) {
+        console.error("[AIPage] Failed to save conversation:", error);
+        setAnnouncement("The conversation could not be saved.");
+        storageErrorReported.current = true;
+      }
+    }
+  }, [messages, sessionRestored]);
 
   const sendMessage = async (text: string) => {
     const trimmed = text.trim();
-    if (!trimmed || loading) return;
+    if (!trimmed || requestActive || !sessionRestored) return;
 
     if (trimmed.length > MAX_MESSAGE_LENGTH) return; // hard guard (UI enforces this)
 
@@ -215,23 +149,21 @@ export default function AIPage() {
 
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
-    setLoading(true);
+    setRequestActive(true);
+    setWaitingForResponse(true);
+    setAnnouncement("Waiting for Opportune AI response.");
     setTimeout(
       () => bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
       50,
     );
 
     const aiMsgId = crypto.randomUUID();
+    let streamingStarted = false;
 
     try {
-      const token = user ? await user.getIdToken() : null;
-
       const res = await fetch("/api/ai", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: trimmed,
           history: messages
@@ -255,7 +187,9 @@ export default function AIPage() {
           timestamp: new Date(),
         },
       ]);
-      setLoading(false); // hide typing indicator once streaming starts
+      streamingStarted = true;
+      setWaitingForResponse(false);
+      setAnnouncement("Opportune AI is responding.");
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -271,23 +205,47 @@ export default function AIPage() {
         );
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
       }
+
+      const trailingText = decoder.decode();
+      if (trailingText) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiMsgId ? { ...m, content: m.content + trailingText } : m,
+          ),
+        );
+      }
+      setAnnouncement("Opportune AI response complete.");
     } catch (err) {
-      setLoading(false);
       const errText =
         err instanceof Error
           ? err.message
           : "Something went wrong. Please try again.";
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: aiMsgId,
-          role: "assistant" as const,
-          content: errText,
-          timestamp: new Date(),
-        },
-      ]);
+      if (streamingStarted) {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === aiMsgId
+              ? {
+                  ...m,
+                  content: `${m.content}\n\n[Response interrupted: ${errText}]`,
+                }
+              : m,
+          ),
+        );
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: aiMsgId,
+            role: "assistant" as const,
+            content: errText,
+            timestamp: new Date(),
+          },
+        ]);
+      }
+      setAnnouncement(`Opportune AI response failed: ${errText}`);
     } finally {
-      setLoading(false);
+      setRequestActive(false);
+      setWaitingForResponse(false);
       setTimeout(
         () => bottomRef.current?.scrollIntoView({ behavior: "smooth" }),
         50,
@@ -304,6 +262,14 @@ export default function AIPage() {
         height: "100%",
       }}
     >
+      <div
+        className="sr-only"
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {announcement}
+      </div>
       <div style={{ marginBottom: 16 }}>
         <h1
           style={{
@@ -327,9 +293,10 @@ export default function AIPage() {
         {QUICK_PROMPTS.map((qp) => (
           <button
             key={qp.label}
+            type="button"
             className="btn btn-outline btn-sm"
             onClick={() => sendMessage(qp.prompt)}
-            disabled={loading}
+            disabled={requestActive || !sessionRestored}
             style={{ fontSize: 12 }}
           >
             {qp.label}
@@ -423,11 +390,24 @@ export default function AIPage() {
                     fontSize: 11,
                     fontWeight: 700,
                     color: "#fff",
+                    overflow: "hidden",
                   }}
                 >
-                  {isUser
-                    ? (user?.displayName?.slice(0, 2).toUpperCase() ?? "ME")
-                    : "AI"}
+                  {isUser ? (
+                    user?.photoURL ? (
+                      <Image
+                        src={sanitizeImageUrl(user.photoURL)}
+                        alt=""
+                        width={28}
+                        height={28}
+                        style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                      />
+                    ) : (
+                      (user?.displayName?.slice(0, 2).toUpperCase() ?? "ME")
+                    )
+                  ) : (
+                    "AI"
+                  )}
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div
@@ -449,7 +429,7 @@ export default function AIPage() {
                         : "1px solid var(--border-primary)",
                     }}
                   >
-                    {renderContent(msg.content, isUser)}
+                    <AIMessageContent content={msg.content} isUser={isUser} />
                   </div>
                   <div
                     style={{
@@ -467,7 +447,7 @@ export default function AIPage() {
           })}
 
           {/* Typing indicator */}
-          {loading && (
+          {waitingForResponse && (
             <div style={{ display: "flex", gap: 10, maxWidth: "85%" }}>
               <div
                 style={{
@@ -541,26 +521,30 @@ export default function AIPage() {
           )}
           <div style={{ display: "flex", gap: 10 }}>
             <input
-              ref={inputRef}
               className="input"
-              style={{ flex: 1, color: "#fff" }}
+              style={{ flex: 1 }}
               placeholder="Ask anything…"
+              aria-label="Ask Opportune AI a question"
               value={input}
               maxLength={MAX_MESSAGE_LENGTH}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) =>
                 e.key === "Enter" && !e.shiftKey && sendMessage(input)
               }
-              disabled={loading}
+              disabled={requestActive || !sessionRestored}
             />
             <button
+              type="button"
               className="btn btn-primary btn-sm"
               onClick={() => sendMessage(input)}
               disabled={
-                loading || !input.trim() || input.length > MAX_MESSAGE_LENGTH
+                requestActive ||
+                !sessionRestored ||
+                !input.trim() ||
+                input.length > MAX_MESSAGE_LENGTH
               }
             >
-              {loading ? "⏳" : "Send"}
+              {requestActive ? "⏳" : "Send"}
             </button>
           </div>
         </div>
@@ -568,7 +552,6 @@ export default function AIPage() {
 
       <style>{`
         @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-4px)} }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
       `}</style>
     </div>
   );
