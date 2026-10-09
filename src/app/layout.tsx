@@ -1,96 +1,161 @@
-import type { Metadata } from 'next';
-import './globals.css';
-import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from '@/contexts/AuthContext';
+import type { Metadata, Viewport } from "next";
+import type { CSSProperties, ReactNode } from "react";
+import { Inter, Outfit } from "next/font/google";
+import "./globals.css";
+import { Toaster } from "react-hot-toast";
+import { AuthProvider } from "@/contexts/AuthContext";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+/**
+ * Absolute base URL so Open Graph / Twitter image URLs resolve correctly.
+ * Order: NEXT_PUBLIC_SITE_URL -> VERCEL_PROJECT_PRODUCTION_URL -> VERCEL_URL.
+ * A malformed value must never crash the whole app, so every step is guarded.
+ */
+function getMetadataBase(): URL | undefined {
+  const candidates = [
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    process.env.VERCEL_URL,
+  ];
+  for (const raw of candidates) {
+    if (!raw) continue;
+    try {
+      return new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+    } catch {
+      // try the next candidate
+    }
+  }
+  // Without a base, Next warns and resolves OG images against localhost.
+  return process.env.NODE_ENV === "production"
+    ? undefined
+    : new URL(`http://localhost:${process.env.PORT ?? 3000}`);
+}
+
+const DESCRIPTION =
+  "Discover hackathons, scholarships, internships, competitions, and events in one place. Opportune helps students in Pakistan find opportunities shared by organizations.";
 
 export const metadata: Metadata = {
-  title: 'Opportune',
-  description:
-    'Discover hackathons, scholarships, internships, competitions, and events in one place. Opportune helps students in Pakistan find opportunities shared by organizations.',
-  keywords: [
-    'Opportune',
-    'student opportunities Pakistan',
-    'hackathons Pakistan',
-    'scholarships for students',
-    'internships Pakistan',
-    'student competitions',
-    'student events',
-    'university events',
-    'opportunity discovery platform',
-  ],
-  authors: [{ name: 'Opportune' }],
-  verification: {
-    google: 'VNPyY13oobL3dsGPU06R_aUy4g6iNIvZr-S6qM9tPcg',
+  metadataBase: getMetadataBase(),
+  title: {
+    default: "Opportune",
+    template: "%s | Opportune",
   },
-   icons: {
-    icon: '/logo_bg.png',
-    apple: '/logo_bg.png',
+  description: DESCRIPTION,
+  applicationName: "Opportune",
+  keywords: [
+    "Opportune",
+    "student opportunities Pakistan",
+    "hackathons Pakistan",
+    "scholarships for students",
+    "internships Pakistan",
+    "student competitions",
+    "student events",
+    "university events",
+    "opportunity discovery platform",
+  ],
+  authors: [{ name: "Opportune" }],
+  verification: {
+    google: "VNPyY13oobL3dsGPU06R_aUy4g6iNIvZr-S6qM9tPcg",
+  },
+  icons: {
+    icon: "/logo_bg.png",
+    apple: "/logo_bg.png",
   },
   openGraph: {
-    title: 'Opportune',
+    title: "Opportune",
     description:
-      'One place for students in Pakistan to discover hackathons, scholarships, internships, competitions, and events shared by organizations.',
-    type: 'website',
-    locale: 'en_US',
+      "One place for students in Pakistan to discover hackathons, scholarships, internships, competitions, and events shared by organizations.",
+    siteName: "Opportune",
+    type: "website",
+    locale: "en_US",
+    images: [{ url: "/logo_bg.png", alt: "Opportune" }],
+  },
+  twitter: {
+    card: "summary",
+    title: "Opportune",
+    description: DESCRIPTION,
+    images: ["/logo_bg.png"],
   },
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // Required for env(safe-area-inset-*) on notched iPhones (mobile bottom nav).
+  viewportFit: "cover",
+  colorScheme: "dark light",
+  // The app defaults to dark and only goes light via the stored toggle, so
+  // keep the browser chrome dark by default.
+  themeColor: "#060b18",
+};
+
+const toastBase: CSSProperties = {
+  background: "var(--bg-card)",
+  color: "var(--text-primary)",
+  border: "1px solid var(--border-primary)",
+  borderRadius: "12px",
+  fontSize: "0.875rem",
+  fontFamily: "var(--font-body)",
+  boxShadow: "var(--shadow-lg)",
+  maxWidth: "380px",
+};
+
+const toastSuccess: CSSProperties = {
+  ...toastBase,
+  border: "1px solid rgba(16,185,129,0.3)",
+  borderLeft: "4px solid #10b981",
+};
+
+const toastError: CSSProperties = {
+  ...toastBase,
+  border: "1px solid rgba(239,68,68,0.3)",
+  borderLeft: "4px solid #ef4444",
+};
+
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    // suppressHydrationWarning: the inline script sets data-theme on <html>
+    // before React hydrates.
+    <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <link rel="icon" href="/favicon.ico" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap"
-          rel="stylesheet"
-        />
         {/* Anti-FOUC: read theme from localStorage before first paint */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('opportune-theme');if(t==='light')document.documentElement.dataset.theme='light';}catch(e){}})();` }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('opportune-theme');if(t==='light')document.documentElement.dataset.theme='light';}catch(e){}})();`,
+          }}
+        />
       </head>
-      <body>
+      <body className={`${inter.variable} ${outfit.variable}`}>
         <AuthProvider>
           {children}
           <Toaster
             position="bottom-right"
             gutter={10}
+            containerClassName="app-toaster"
+            containerStyle={{ zIndex: 300 }}
             toastOptions={{
               duration: 3500,
-              style: {
-                background: '#111827',
-                color: '#f9fafb',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '12px',
-                fontSize: '0.875rem',
-                fontFamily: 'Inter, sans-serif',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                maxWidth: '380px',
-              },
+              style: toastBase,
               success: {
                 duration: 3000,
-                iconTheme: { primary: '#10b981', secondary: '#111827' },
-                style: {
-                  background: '#111827',
-                  color: '#f9fafb',
-                  border: '1px solid rgba(16,185,129,0.3)',
-                  borderLeft: '4px solid #10b981',
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                },
+                iconTheme: { primary: "#10b981", secondary: "#ffffff" },
+                style: toastSuccess,
               },
               error: {
                 duration: 4500,
-                iconTheme: { primary: '#ef4444', secondary: '#111827' },
-                style: {
-                  background: '#111827',
-                  color: '#f9fafb',
-                  border: '1px solid rgba(239,68,68,0.3)',
-                  borderLeft: '4px solid #ef4444',
-                  borderRadius: '12px',
-                  boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-                },
+                iconTheme: { primary: "#ef4444", secondary: "#ffffff" },
+                style: toastError,
               },
             }}
           />
