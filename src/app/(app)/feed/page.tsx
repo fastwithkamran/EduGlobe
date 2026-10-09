@@ -5,8 +5,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   subscribeToFeed,
   subscribeToFollowingFeed,
-  followSociety,
-  unfollowSociety,
   getFollowedSocietyIds,
 } from "@/lib/firestore";
 import { TYPE_TEXTS } from "@/lib/postHelpers";
@@ -17,7 +15,6 @@ import type { Post, PostType } from "@/types";
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 15;
-const PAGE_INCREMENT = 15;
 
 type FeedTab = "all" | "following";
 
@@ -33,13 +30,20 @@ const TYPE_FILTERS: Array<{ value: PostType | "all"; label: string }> = [
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function GlobalFeedPage() {
-  const { user, isSuperAdmin } = useAuth();
+  const { user, isSuperAdmin, loading: authLoading, loginWithGoogle } = useAuth();
 
   const [tab, setTab] = useState<FeedTab>("all");
   const [loadingAll, setLoadingAll] = useState(true);
-  const [followingLoaded, setFollowingLoaded] = useState(false);
+  const [feedRetry, setFeedRetry] = useState(0);
+  const [followingLoadedUserId, setFollowingLoadedUserId] = useState<
+    string | null
+  >(null);
+  const [followingError, setFollowingError] = useState<string | null>(null);
+  const [followingRetry, setFollowingRetry] = useState(0);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const [followedIds, setFollowedIds] = useState<Set<string>>(new Set());
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [followingPageSize, setFollowingPageSize] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
 
   // All posts from subscription (may include unseen new arrivals)
@@ -53,12 +57,7 @@ export default function GlobalFeedPage() {
   // Track IDs the user has already seen (to detect new arrivals)
   const seenAllIds = useRef<Set<string>>(new Set());
   const seenFollowingIds = useRef<Set<string>>(new Set());
-  const isInitAllRef = useRef(true);
-  const isInitFollowRef = useRef(true);
-
-  const allUnsubRef = useRef<(() => void) | null>(null);
-  const followUnsubRef = useRef<(() => void) | null>(null);
-
+  const followingUidRef = useRef<string | null>(null);
   // Search + type filter
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<PostType | "all">("all");
@@ -70,122 +69,187 @@ export default function GlobalFeedPage() {
 
   // ── Global feed subscription (re-subscribes on pageSize change) ──────────────
   useEffect(() => {
-    isInitAllRef.current = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPendingAllCount(0); // reset badge on re-subscribe
-    allUnsubRef.current?.();
-    allUnsubRef.current = subscribeToFeed((incoming) => {
-      setAllLivePosts(incoming);
-      if (isInitAllRef.current) {
-        // First load — mark all as seen, no badge
-        isInitAllRef.current = false;
-        incoming.forEach((p) => seenAllIds.current.add(p.id));
-        setDisplayedAll(incoming);
+    let initialized = true;
+    let active = true;
+    const unsubscribe = subscribeToFeed(
+      (incoming) => {
+        if (!active) return;
+        setAllLivePosts(incoming);
+        if (initialized) {
+          // First load and each load-more subscription includes the latest window.
+          initialized = false;
+          setFeedError(null);
+          setPendingAllCount(0);
+          incoming.forEach((post) => seenAllIds.current.add(post.id));
+          setDisplayedAll(incoming);
+          setLoadingAll(false);
+          setLoadingMore(false);
+        } else {
+          setPendingAllCount(
+            incoming.filter((post) => !seenAllIds.current.has(post.id)).length,
+          );
+        }
+      },
+      pageSize,
+      (error) => {
+        if (!active) return;
+        console.error(
+          "[GlobalFeedPage] Global feed subscription failed:",
+          error,
+        );
+        setFeedError("Unable to load the global feed. Please try again.");
         setLoadingAll(false);
         setLoadingMore(false);
-      } else {
-        // Live update — count posts the user hasn't seen yet
-        setPendingAllCount(
-          incoming.filter((p) => !seenAllIds.current.has(p.id)).length,
-        );
-      }
-    }, pageSize);
-    return () => allUnsubRef.current?.();
-  }, [pageSize]);
+      },
+    );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [pageSize, feedRetry]);
 
   // ── Following feed ───────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!user?.uid) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setFollowingLoaded(true); // not signed in — nothing to load
-      return;
+    const uid = user?.uid;
+    const identityChanged = followingUidRef.current !== (uid ?? null);
+    followingUidRef.current = uid ?? null;
+    let active = true;
+    let initialized = true;
+    let unsubscribe: (() => void) | null = null;
+
+    if (!uid) {
+      queueMicrotask(() => {
+        if (!active) return;
+        setFollowingError(null);
+        setFollowingLivePosts([]);
+        setDisplayedFollowing([]);
+        setFollowedIds(new Set());
+        setPendingFollowCount(0);
+      });
+      return () => {
+        active = false;
+      };
     }
 
-    getFollowedSocietyIds(user.uid).then((ids) => {
-      setFollowedIds(new Set(ids));
-      followUnsubRef.current?.();
-      isInitFollowRef.current = true;
-      setPendingFollowCount(0);
-      const unsub = subscribeToFollowingFeed(ids, (incoming) => {
-        setFollowingLivePosts(incoming);
-        if (isInitFollowRef.current) {
-          // First load — mark all as seen
-          isInitFollowRef.current = false;
-          incoming.forEach((p) => seenFollowingIds.current.add(p.id));
-          setDisplayedFollowing(incoming);
-          setFollowingLoaded(true);
-        } else {
-          // Live update — count unseen
-          setPendingFollowCount(
-            incoming.filter((p) => !seenFollowingIds.current.has(p.id)).length,
-          );
-        }
+    if (identityChanged) {
+      queueMicrotask(() => {
+        if (!active) return;
+        setFollowingError(null);
+        setFollowingLoadedUserId(null);
+        setFollowingLivePosts([]);
+        setDisplayedFollowing([]);
+        setPendingFollowCount(0);
       });
-      if (unsub) followUnsubRef.current = unsub;
-      else setFollowingLoaded(true);
-    });
-    return () => followUnsubRef.current?.();
-  }, [user?.uid]);
+    }
+
+    getFollowedSocietyIds(uid)
+      .then((ids) => {
+        if (!active) return;
+        setFollowedIds(new Set(ids));
+        setFollowingError(null);
+        unsubscribe = subscribeToFollowingFeed(
+          ids,
+          (incoming) => {
+            if (!active) return;
+            setFollowingError(null);
+            setFollowingLivePosts(incoming);
+            if (initialized) {
+              initialized = false;
+              incoming.forEach((post) => seenFollowingIds.current.add(post.id));
+              setDisplayedFollowing(incoming);
+              setFollowingLoadedUserId(uid);
+              setPendingFollowCount(0);
+            } else {
+              setPendingFollowCount(
+                incoming.filter(
+                  (post) => !seenFollowingIds.current.has(post.id),
+                ).length,
+              );
+            }
+          },
+          (error) => {
+            if (!active) return;
+            console.error(
+              "[GlobalFeedPage] Following feed subscription failed:",
+              error,
+            );
+            setFollowingError(
+              "Unable to load your following feed. Please try again.",
+            );
+            setFollowingLoadedUserId(uid);
+            setLoadingMore(false);
+          },
+          followingPageSize,
+        );
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        console.error(
+          "[GlobalFeedPage] Failed to load followed societies:",
+          error,
+        );
+        setFollowingError(
+          "Unable to load your following feed. Please try again.",
+        );
+        setFollowingLoadedUserId(uid);
+        setLoadingMore(false);
+      });
+
+    return () => {
+      active = false;
+      unsubscribe?.();
+    };
+  }, [user?.uid, followingRetry, followingPageSize]);
 
   const pendingCount = tab === "all" ? pendingAllCount : pendingFollowCount;
 
   const showNewPosts = () => {
     if (tab === "all") {
-      allLivePosts.forEach((p) => seenAllIds.current.add(p.id));
+      allLivePosts.forEach((post) => seenAllIds.current.add(post.id));
       setDisplayedAll(allLivePosts);
       setPendingAllCount(0);
     } else {
-      followingLivePosts.forEach((p) => seenFollowingIds.current.add(p.id));
+      followingLivePosts.forEach((post) =>
+        seenFollowingIds.current.add(post.id),
+      );
       setDisplayedFollowing(followingLivePosts);
       setPendingFollowCount(0);
     }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ── Follow toggle ────────────────────────────────────────────────────────────
-  // Plain function — React Compiler handles memoization; explicit useCallback
-  // conflicted with ref mutations inside (react-compiler lint error).
   const handleFollowToggle = (societyId: string, following: boolean) => {
-    setFollowedIds((prev) => {
-      const next = new Set(prev);
-      following ? next.add(societyId) : next.delete(societyId);
+    setFollowingError(null);
+    setFollowingLoadedUserId(null);
+    setFollowedIds((previous) => {
+      const next = new Set(previous);
+      if (following) next.add(societyId);
+      else next.delete(societyId);
       return next;
     });
-    if (user?.uid) {
-      getFollowedSocietyIds(user.uid).then((ids) => {
-        followUnsubRef.current?.();
-        isInitFollowRef.current = true;
-        setPendingFollowCount(0);
-        const unsub = subscribeToFollowingFeed(ids, (incoming) => {
-          setFollowingLivePosts(incoming);
-          if (isInitFollowRef.current) {
-            isInitFollowRef.current = false;
-            incoming.forEach((p) => seenFollowingIds.current.add(p.id));
-            setDisplayedFollowing(incoming);
-          } else {
-            setPendingFollowCount(
-              incoming.filter((p) => !seenFollowingIds.current.has(p.id))
-                .length,
-            );
-          }
-        });
-        if (unsub) followUnsubRef.current = unsub;
-      });
-    }
+    setFollowingRetry((previous) => previous + 1);
   };
 
   // ── Derived data ─────────────────────────────────────────────────────────────
   const currentDisplayed = tab === "all" ? displayedAll : displayedFollowing;
-  const isLoading = tab === "all" ? loadingAll : !followingLoaded;
-  const hasMore = tab === "all" && allLivePosts.length === pageSize; // only page global feed
+  const isLoading =
+    authLoading ||
+    (tab === "all"
+      ? loadingAll
+      : Boolean(user?.uid && followingLoadedUserId !== user.uid));
+  const hasMore =
+    tab === "all"
+      ? allLivePosts.length === pageSize
+      : followingLivePosts.length === followingPageSize;
+  const normalizedSearch = search.trim().toLowerCase();
 
   const filteredPosts = currentDisplayed
-    .filter((p) => typeFilter === "all" || p.type === typeFilter)
+    .filter((post) => typeFilter === "all" || post.type === typeFilter)
     .filter(
-      (p) =>
-        !search.trim() ||
-        p.societyName.toLowerCase().includes(search.toLowerCase()) ||
-        p.content.toLowerCase().includes(search.toLowerCase()),
+      (post) =>
+        !normalizedSearch ||
+        post.societyName.toLowerCase().includes(normalizedSearch) ||
+        post.content.toLowerCase().includes(normalizedSearch),
     );
 
   return (
@@ -236,7 +300,11 @@ export default function GlobalFeedPage() {
 
           {/* Search bar */}
           <div style={{ position: "relative", minWidth: 220 }}>
+            <label className="sr-only" htmlFor="feed-search">
+              Search feed posts
+            </label>
             <span
+              aria-hidden="true"
               style={{
                 position: "absolute",
                 left: 10,
@@ -250,14 +318,17 @@ export default function GlobalFeedPage() {
               🔍
             </span>
             <input
+              id="feed-search"
               className="input"
               placeholder="Search posts or institutes…"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
               style={{ paddingLeft: 32, fontSize: 13, width: "100%" }}
             />
             {search && (
               <button
+                type="button"
+                aria-label="Clear search"
                 onClick={() => setSearch("")}
                 style={{
                   position: "absolute",
@@ -285,27 +356,29 @@ export default function GlobalFeedPage() {
             borderBottom: "1px solid var(--border-primary)",
           }}
         >
-          {(["all", "following"] as FeedTab[]).map((t) => (
+          {(["all", "following"] as FeedTab[]).map((feedTab) => (
             <button
-              key={t}
-              onClick={() => setTab(t)}
+              key={feedTab}
+              type="button"
+              aria-pressed={tab === feedTab}
+              onClick={() => setTab(feedTab)}
               className="feed-tab-button"
               style={{
                 fontWeight: 500,
                 color:
-                  tab === t ? "var(--primary-400)" : "var(--text-tertiary)",
-                borderBottom: `2px solid ${tab === t ? "var(--primary-400)" : "transparent"}`,
+                  tab === feedTab
+                    ? "var(--primary-400)"
+                    : "var(--text-tertiary)",
                 background: "none",
                 border: "none",
-                borderBottomWidth: 2,
-                borderBottomStyle: "solid",
+                borderBottom: `2px solid ${tab === feedTab ? "var(--primary-400)" : "transparent"}`,
                 cursor: "pointer",
                 transition: "all .15s",
                 fontFamily: "var(--font-body)",
               }}
             >
-              {t === "all" ? "🌐 All Posts" : "🔔 Following"}
-              {t === "following" && followedIds.size > 0 && (
+              {feedTab === "all" ? "🌐 All Posts" : "🔔 Following"}
+              {feedTab === "following" && followedIds.size > 0 && (
                 <span
                   style={{
                     marginLeft: 6,
@@ -367,6 +440,8 @@ export default function GlobalFeedPage() {
             return (
               <button
                 key={value}
+                type="button"
+                aria-pressed={active}
                 onClick={() => setTypeFilter(value)}
                 style={{
                   padding: "4px 12px",
@@ -401,6 +476,7 @@ export default function GlobalFeedPage() {
           }}
         >
           <button
+            type="button"
             onClick={showNewPosts}
             style={{
               pointerEvents: "auto",
@@ -433,8 +509,9 @@ export default function GlobalFeedPage() {
           overflowY: "auto",
         }}
       >
-        {/* ── Unauthenticated following tab ── */}
-        {tab === "following" && !user ? (
+        {tab === "following" && authLoading ? (
+          <FeedSkeleton />
+        ) : tab === "following" && !user ? (
           <div style={{ textAlign: "center", padding: "80px 24px" }}>
             <div style={{ fontSize: 52, marginBottom: 16 }}>🔒</div>
             <div
@@ -460,12 +537,55 @@ export default function GlobalFeedPage() {
               Create an account to follow institutes and get a personalised feed
               of their announcements, events, and opportunities.
             </p>
-            <a href="/login" className="btn btn-primary btn-sm">
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={() => loginWithGoogle().catch(() => {})}
+            >
               Sign In
-            </a>
+            </button>
+          </div>
+        ) : tab === "following" && followingError ? (
+          <div
+            role="alert"
+            style={{ textAlign: "center", padding: "80px 24px" }}
+          >
+            <p style={{ color: "var(--text-secondary)", marginBottom: 16 }}>
+              {followingError}
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                setFollowingError(null);
+                setFollowingRetry((retry) => retry + 1);
+              }}
+            >
+              Try again
+            </button>
           </div>
         ) : isLoading ? (
           <FeedSkeleton />
+        ) : feedError && tab === "all" ? (
+          <div
+            role="alert"
+            style={{ textAlign: "center", padding: "80px 24px" }}
+          >
+            <p style={{ color: "var(--text-secondary)", marginBottom: 16 }}>
+              {feedError}
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                setFeedError(null);
+                setLoadingAll(true);
+                setFeedRetry((retry) => retry + 1);
+              }}
+            >
+              Try again
+            </button>
+          </div>
         ) : filteredPosts.length === 0 ? (
           // Empty / no results
           <div style={{ textAlign: "center", padding: "80px 24px" }}>
@@ -514,6 +634,7 @@ export default function GlobalFeedPage() {
             </p>
             {search ? (
               <button
+                type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setSearch("")}
               >
@@ -521,6 +642,7 @@ export default function GlobalFeedPage() {
               </button>
             ) : typeFilter !== "all" ? (
               <button
+                type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setTypeFilter("all")}
               >
@@ -528,15 +650,20 @@ export default function GlobalFeedPage() {
               </button>
             ) : tab === "following" ? (
               <button
+                type="button"
                 className="btn btn-primary btn-sm"
                 onClick={() => setTab("all")}
               >
                 🌐 Browse All Posts
               </button>
             ) : (
-              <a href="/societies" className="btn btn-outline btn-sm">
-                🏛️ Explore Institutes
-              </a>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm"
+                onClick={() => setTab("all")}
+              >
+                🌐 Browse All Posts
+              </button>
             )}
           </div>
         ) : (
@@ -558,11 +685,16 @@ export default function GlobalFeedPage() {
                 style={{ textAlign: "center", marginTop: 8, marginBottom: 16 }}
               >
                 <button
+                  type="button"
                   className="btn btn-outline btn-sm"
                   disabled={loadingMore}
                   onClick={() => {
                     setLoadingMore(true);
-                    setPageSize((p) => p + PAGE_INCREMENT);
+                    if (tab === "all") {
+                      setPageSize((size) => size + PAGE_SIZE);
+                    } else {
+                      setFollowingPageSize((size) => size + PAGE_SIZE);
+                    }
                   }}
                 >
                   {loadingMore ? "Loading…" : "Load More Posts"}

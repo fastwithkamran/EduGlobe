@@ -1,13 +1,15 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { subscribeToComments, addComment } from '@/lib/firestore';
-import { getInitials } from '@/lib/postHelpers';
-import { sanitizeImageUrl } from '@/lib/utils';
-import type { PostComment } from '@/types';
+import { FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
+import toast from "react-hot-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { subscribeToComments, addComment } from "@/lib/firestore";
+import { getInitials } from "@/lib/postHelpers";
+import { sanitizeImageUrl } from "@/lib/utils";
+import type { PostComment } from "@/types";
+
+const MAX_COMMENT_LENGTH = 100;
 
 /**
  * Shared comment thread — used in both the global feed and the my-society page.
@@ -15,84 +17,244 @@ import type { PostComment } from '@/types';
  */
 export function CommentThread({ postId }: { postId: string }) {
   const { user, userProfile } = useAuth();
-  const [comments, setComments] = useState<PostComment[]>([]);
-  const [text,     setText]     = useState('');
-  const [sending,  setSending]  = useState(false);
+  const [commentSnapshot, setCommentSnapshot] = useState<{
+    key: string;
+    comments: PostComment[];
+  } | null>(null);
+  const [subscriptionState, setSubscriptionState] = useState<{
+    key: string;
+    status: "ready" | "error";
+  } | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [text, setText] = useState("");
+  const [sending, setSending] = useState(false);
+  const subscriptionKey = `${postId}:${retryCount}`;
 
   useEffect(() => {
-    const unsub = subscribeToComments(postId, setComments);
-    return () => unsub();
-  }, [postId]);
+    let active = true;
+    const unsubscribe = subscribeToComments(
+      postId,
+      (comments) => {
+        if (!active) return;
+        setCommentSnapshot({ key: subscriptionKey, comments });
+        setSubscriptionState({ key: subscriptionKey, status: "ready" });
+      },
+      (error) => {
+        if (!active) return;
+        console.error("[CommentThread] Failed to load comments:", error);
+        setSubscriptionState({ key: subscriptionKey, status: "error" });
+      },
+    );
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [postId, subscriptionKey]);
 
-  const submit = async () => {
-    if (!text.trim() || !user || !userProfile) return;
+  const comments =
+    commentSnapshot?.key === subscriptionKey ? commentSnapshot.comments : [];
+  const state =
+    subscriptionState?.key === subscriptionKey
+      ? subscriptionState.status
+      : null;
+  const loading = state === null;
+  const loadError = state === "error";
+
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const content = text.trim();
+    if (
+      !content ||
+      content.length > MAX_COMMENT_LENGTH ||
+      !user ||
+      !userProfile ||
+      sending
+    )
+      return;
     setSending(true);
     try {
       await addComment(postId, {
-        postId,
-        authorId:       user.uid,
-        authorName:     userProfile.displayName,
+        authorId: user.uid,
+        authorName: userProfile.displayName,
         authorPhotoURL: userProfile.photoURL,
-        content:        text.trim(),
+        content,
       });
-      setText('');
-    } catch {
-      toast.error('Failed to post comment');
+      setText("");
+    } catch (error) {
+      console.error("[CommentThread] Failed to post comment:", error);
+      toast.error("Failed to post comment");
     } finally {
       setSending(false);
     }
   };
 
   return (
-    <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border-secondary)' }}>
-      {comments.length === 0 && (
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-          No comments yet — be the first!
+    <section
+      aria-label="Comments"
+      aria-busy={loading}
+      style={{
+        marginTop: 14,
+        paddingTop: 12,
+        borderTop: "1px solid var(--border-secondary)",
+      }}
+    >
+      {loading ? (
+        <p
+          role="status"
+          style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 10 }}
+        >
+          Loading comments…
         </p>
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 8 }}>
-        {comments.map(c => (
-          <div key={c.id} style={{ display: 'flex', gap: 8 }}>
-            {/* Avatar */}
-            <div style={{
-              width: 28, height: 28, borderRadius: '50%',
-              background: 'var(--gradient-primary)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 10, fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden',
-            }}>
-              {c.authorPhotoURL
-                ? <Image src={sanitizeImageUrl(c.authorPhotoURL)} alt="" width={28} height={28} style={{ objectFit: 'cover' }} />
-                : getInitials(c.authorName)}
-            </div>
-            {/* Bubble */}
-            <div style={{ background: 'var(--bg-tertiary)', borderRadius: '0 12px 12px 12px', padding: '8px 12px', flex: 1 }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 2 }}>{c.authorName}</div>
-              <div style={{ fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>{c.content}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {user && (
-        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <input
-            value={text}
-            onChange={e => setText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) submit(); }}
-            placeholder="Write a comment…"
-            className="input"
-            style={{ flex: 1, padding: '7px 12px', fontSize: 13 }}
-          />
+      ) : loadError ? (
+        <div
+          role="alert"
+          style={{
+            fontSize: 12,
+            color: "var(--text-secondary)",
+            marginBottom: 10,
+          }}
+        >
+          <span>Comments could not be loaded. </span>
           <button
-            className="btn btn-primary btn-sm"
-            onClick={submit}
-            disabled={sending || !text.trim()}
+            type="button"
+            onClick={() => setRetryCount((count) => count + 1)}
+            style={{
+              border: 0,
+              padding: 0,
+              background: "none",
+              color: "var(--primary-400)",
+              cursor: "pointer",
+            }}
           >
-            {sending ? '…' : 'Post'}
+            Try again
           </button>
         </div>
+      ) : (
+        comments.length === 0 && (
+          <p
+            style={{
+              fontSize: 12,
+              color: "var(--text-muted)",
+              marginBottom: 10,
+            }}
+          >
+            No comments yet — be the first!
+          </p>
+        )
       )}
-    </div>
+
+      {!loading && !loadError && (
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            marginBottom: 8,
+          }}
+        >
+          {comments.map((comment) => (
+            <div key={comment.id} style={{ display: "flex", gap: 8 }}>
+              {/* Avatar */}
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: "var(--gradient-primary)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "#fff",
+                  flexShrink: 0,
+                  overflow: "hidden",
+                }}
+              >
+                {comment.authorPhotoURL ? (
+                  <Image
+                    src={sanitizeImageUrl(comment.authorPhotoURL)}
+                    alt=""
+                    width={28}
+                    height={28}
+                    style={{ objectFit: "cover" }}
+                  />
+                ) : (
+                  getInitials(comment.authorName)
+                )}
+              </div>
+              {/* Bubble */}
+              <div
+                style={{
+                  background: "var(--bg-tertiary)",
+                  borderRadius: "0 12px 12px 12px",
+                  padding: "8px 12px",
+                  flex: 1,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "var(--text-primary)",
+                    marginBottom: 2,
+                  }}
+                >
+                  {comment.authorName}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    color: "var(--text-secondary)",
+                    lineHeight: 1.5,
+                    whiteSpace: "pre-wrap",
+                    overflowWrap: "anywhere",
+                  }}
+                >
+                  {comment.content}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {user && !loadError && (
+        <form
+          onSubmit={submit}
+          style={{ display: "flex", gap: 8, marginTop: 8 }}
+        >
+          <input
+            aria-label="Write a comment"
+            value={text}
+            maxLength={MAX_COMMENT_LENGTH}
+            onChange={(event) => setText(event.target.value)}
+            placeholder="Write a comment…"
+            className="input"
+            style={{ flex: 1, padding: "7px 12px", fontSize: 13 }}
+          />
+          <span
+            aria-live="polite"
+            style={{
+              alignSelf: "center",
+              color: "var(--text-muted)",
+              fontSize: 10,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {text.length}/{MAX_COMMENT_LENGTH}
+          </span>
+          <button
+            type="submit"
+            className="btn btn-primary btn-sm"
+            disabled={
+              sending || !text.trim() || text.trim().length > MAX_COMMENT_LENGTH
+            }
+          >
+            {sending ? "Posting…" : "Post"}
+          </button>
+        </form>
+      )}
+    </section>
   );
 }

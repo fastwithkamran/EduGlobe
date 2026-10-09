@@ -1,12 +1,55 @@
 "use client";
 
-import { TYPE_COLORS, TYPE_TEXTS, daysUntil } from "@/lib/postHelpers";
+import {
+  daysUntil,
+  formatOpportunityDate,
+  safeExternalUrl,
+  TYPE_COLORS,
+  TYPE_TEXTS,
+} from "@/lib/postHelpers";
 import type { OpportunityMeta, PostType } from "@/types";
 
-/*
- * Shared opportunity metadata card — shown beneath post content
- * Used in both the global feed PostCard and the my-society SocietyPostCard.
- */
+function getDeadlinePresentation(deadline?: string) {
+  const days = daysUntil(deadline);
+  if (days === null) {
+    return { color: "var(--text-muted)", label: "Deadline" };
+  }
+  if (days < 0) return { color: "#9ca3af", label: "Deadline passed" };
+  if (days === 0) return { color: "#ef4444", label: "Deadline today" };
+  if (days <= 3) return { color: "#ef4444", label: `${days}d left` };
+  if (days <= 7) return { color: "#f97316", label: `${days}d left` };
+  return { color: "#10b981", label: `${days}d left` };
+}
+
+function MetadataItem({
+  icon,
+  children,
+  emphasized = false,
+  color,
+}: {
+  icon: string;
+  children: React.ReactNode;
+  emphasized?: boolean;
+  color?: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-1.5">
+      <span aria-hidden="true" className="shrink-0 text-[13px]">
+        {icon}
+      </span>
+      <span
+        className="break-words text-xs"
+        style={{
+          color: color ?? "var(--text-secondary)",
+          fontWeight: emphasized ? 700 : 400,
+        }}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
+
 export function OpportunityCard({
   meta,
   type,
@@ -14,151 +57,100 @@ export function OpportunityCard({
   meta: OpportunityMeta;
   type: PostType;
 }) {
-  const days = daysUntil(meta.deadline);
-
-  const deadlineColor =
-    days === null
-      ? "var(--text-muted)"
-      : days < 0
-        ? "#9ca3af" // past
-        : days <= 3
-          ? "#ef4444" // urgent
-          : days <= 7
-            ? "#f97316" // soon
-            : "#10b981"; // plenty of time
-
-  const deadlineLabel =
-    days === null
-      ? ""
-      : days < 0
-        ? "Deadline passed"
-        : days === 0
-          ? "Deadline TODAY"
-          : `${days}d left`;
+  const deadline = formatOpportunityDate(meta.deadline);
+  const deadlinePresentation = getDeadlinePresentation(meta.deadline);
+  const startDate = formatOpportunityDate(meta.startDate);
+  const endDate = formatOpportunityDate(meta.endDate);
+  const applyLink = safeExternalUrl(meta.applyLink);
+  const actionLabel =
+    type === "event" || type === "hackathon" ? "Register" : "Apply Now";
+  const skills = [
+    ...new Set(meta.skills?.map((skill) => skill.trim()).filter(Boolean)),
+  ];
+  const color = TYPE_TEXTS[type];
 
   return (
-    <div
+    <section
+      aria-label={`${type.charAt(0).toUpperCase()}${type.slice(1)} details`}
+      className="mt-3 flex flex-col gap-2.5 rounded-xl px-3.5 py-3.5 sm:px-4"
       style={{
-        marginTop: 12,
-        padding: "14px 16px",
         background: TYPE_COLORS[type],
-        border: `1px solid ${TYPE_TEXTS[type]}30`,
-        borderRadius: 12,
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
+        border: `1px solid ${color}30`,
       }}
     >
-      {/* Top row: deadline + prize + location + country */}
-      <div
-        style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: 16,
-          alignItems: "center",
-        }}
-      >
-        {meta.deadline && (
-          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <span style={{ fontSize: 13 }}>⏰</span>
-            <span
-              style={{ fontSize: 12, fontWeight: 600, color: deadlineColor }}
-            >
-              {deadlineLabel}
-            </span>
-            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-              ·{" "}
-              {new Date(meta.deadline).toLocaleDateString("en-PK", {
-                day: "numeric",
-                month: "short",
-                year: "numeric",
-              })}
-            </span>
-          </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        {deadline && (
+          <MetadataItem icon="⏰" emphasized color={deadlinePresentation.color}>
+            {deadlinePresentation.label} · {deadline}
+          </MetadataItem>
+        )}
+        {(startDate || endDate) && (
+          <MetadataItem icon="📅">
+            {startDate && endDate
+              ? `${startDate} – ${endDate}`
+              : (startDate ?? endDate)}
+          </MetadataItem>
         )}
         {meta.prize && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 13 }}>🏅</span>
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#fbbf24" }}>
-              {meta.prize}
-            </span>
-          </div>
+          <MetadataItem icon="🏅" emphasized color="#fbbf24">
+            {meta.prize}
+          </MetadataItem>
+        )}
+        {meta.funding && (
+          <MetadataItem icon="🎓" emphasized color="#fbbf24">
+            {meta.funding}
+          </MetadataItem>
         )}
         {meta.location && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 12 }}>📍</span>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              {meta.location}
-            </span>
-          </div>
+          <MetadataItem icon="📍">{meta.location}</MetadataItem>
         )}
         {meta.country && meta.country !== meta.location && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 12 }}>🌍</span>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              {meta.country}
-            </span>
-          </div>
+          <MetadataItem icon="🌍">{meta.country}</MetadataItem>
         )}
         {meta.organizer && (
-          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-            <span style={{ fontSize: 12 }}>🏛</span>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-              {meta.organizer}
-            </span>
-          </div>
+          <MetadataItem icon="🏛">{meta.organizer}</MetadataItem>
         )}
       </div>
 
-      {/* Skills */}
-      {meta.skills && meta.skills.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-          {meta.skills.map((s) => (
-            <span
-              key={s}
+      {skills.length > 0 && (
+        <ul
+          className="m-0 flex list-none flex-wrap gap-1.5 p-0"
+          aria-label={type === "event" ? "Topics" : "Skills and topics"}
+        >
+          {skills.map((skill, index) => (
+            <li
+              key={`${skill}-${index}`}
+              className="rounded-full px-2 py-0.5 text-[11px] font-medium"
               style={{
-                fontSize: 11,
-                padding: "2px 8px",
-                background: `${TYPE_TEXTS[type]}18`,
-                color: TYPE_TEXTS[type],
-                borderRadius: 999,
-                fontWeight: 500,
-                border: `1px solid ${TYPE_TEXTS[type]}30`,
+                background: `${color}18`,
+                color,
+                border: `1px solid ${color}30`,
               }}
             >
-              {s}
-            </span>
+              {skill}
+            </li>
           ))}
-        </div>
+        </ul>
       )}
 
-      {/* Apply button */}
-      {meta.applyLink && (
+      {meta.eligibility && (
+        <p className="m-0 break-words text-xs leading-relaxed text-[var(--text-secondary)]">
+          <strong className="text-[var(--text-primary)]">Eligibility:</strong>{" "}
+          {meta.eligibility}
+        </p>
+      )}
+
+      {applyLink && (
         <a
-          href={meta.applyLink}
+          href={applyLink}
           target="_blank"
-          rel="noreferrer"
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "8px 16px",
-            borderRadius: 8,
-            background: TYPE_TEXTS[type],
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 13,
-            textDecoration: "none",
-            alignSelf: "flex-start",
-            opacity: 1,
-            transition: "opacity .15s",
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.85")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          rel="noopener noreferrer"
+          className="inline-flex min-h-9 self-start items-center rounded-lg px-4 py-2 text-[13px] font-bold transition-opacity hover:opacity-90 shadow-sm"
+          style={{ background: color, color: "#ffffff" }}
         >
-          🚀 Apply Now
+          🚀 {actionLabel}
         </a>
       )}
-    </div>
+    </section>
   );
 }
