@@ -14,6 +14,8 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
+
+  serverExternalPackages: ["firebase-admin"],
 };
 
 export default nextConfig;

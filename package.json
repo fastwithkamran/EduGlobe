@@ -10,6 +10,7 @@
     "clean": "next clean"
   },
   "dependencies": {
+    "@google-cloud/firestore": "^9.3.1",
     "@google/genai": "^2.27.0",
     "cloudinary": "^2.11.0",
     "firebase": "^12.12.1",
@@ -20,6 +21,9 @@
     "react": "^19.2.7",
     "react-dom": "^19.2.1",
     "react-hot-toast": "^2.6.0"
+  },
+  "overrides": {
+    "jose": "4.15.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.3",
