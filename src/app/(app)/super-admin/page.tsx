@@ -1,211 +1,222 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
-import { useAuth } from '@/contexts/AuthContext';
-import { getAllSocieties, deleteSociety } from '@/lib/firestore';
-import { sanitizeImageUrl } from '@/lib/utils';
-import type { Society } from '@/types';
-
-// ─── Confirm Delete Modal ─────────────────────────────────────────────────────
-
-function ConfirmDeleteModal({
-  society, onConfirm, onCancel, loading,
-}: {
-  society: Society;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading: boolean;
-}) {
-  return (
-    <div
-      onClick={onCancel}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(4px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ background: 'var(--bg-secondary)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 16, padding: '32px 28px', width: 460, maxWidth: '90vw' }}
-      >
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', border: '2px solid rgba(239,68,68,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, margin: '0 auto 18px' }}>⚠️</div>
-        <h2 style={{ fontSize: 'var(--text-xl)', fontFamily: 'var(--font-heading)', fontWeight: 800, textAlign: 'center', marginBottom: 10 }}>Delete Society?</h2>
-        <p style={{ fontSize: 14, color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.65, marginBottom: 8 }}>
-          You are about to permanently delete <strong style={{ color: 'var(--text-primary)' }}>{society.name}</strong>.
-        </p>
-        <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: 10, padding: '12px 16px', marginBottom: 24 }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#ef4444', marginBottom: 8 }}>This will permanently delete:</div>
-          {[
-            'The society profile and all metadata',
-            'All posts made by this society',
-            'All members and follow relationships',
-          ].map((item, i) => (
-            <div key={i} style={{ display: 'flex', gap: 8, fontSize: 12, color: 'var(--text-secondary)', marginBottom: 4 }}>
-              <span style={{ color: '#ef4444', flexShrink: 0 }}>✕</span>{item}
-            </div>
-          ))}
-        </div>
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 20 }}>
-          This action <strong style={{ color: '#ef4444' }}>cannot be undone</strong>.
-        </p>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-          <button className="btn btn-outline" onClick={onCancel} disabled={loading} style={{ minWidth: 100 }}>Cancel</button>
-          <button
-            disabled={loading}
-            onClick={onConfirm}
-            style={{ minWidth: 160, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px 20px', background: loading ? 'rgba(239,68,68,0.4)' : 'linear-gradient(135deg,#ef4444,#dc2626)', color: '#fff', border: 'none', borderRadius: 'var(--radius-lg)', fontWeight: 700, fontSize: 13, cursor: loading ? 'not-allowed' : 'pointer', fontFamily: 'var(--font-body)' }}
-          >
-            {loading ? '⏳ Deleting…' : '🗑️ Delete Society'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Page ─────────────────────────────────────────────────────────────────────
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { deleteSociety, getAllSocieties } from "@/lib/firestore";
+import type { Society } from "@/types";
+import { ConfirmDeleteModal } from "./_components/ConfirmDeleteModal";
+import { SocietyRow } from "./_components/SocietyRow";
 
 export default function SuperAdminPage() {
   const { isSuperAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
+  const [societies, setSocieties] = useState<Society[]>([]);
+  const [search, setSearch] = useState("");
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loadState, setLoadState] = useState<{
+    attempt: number;
+    status: "success" | "error";
+  } | null>(null);
+  const [confirmSociety, setConfirmSociety] = useState<Society | null>(null);
+  const [deletingSocietyId, setDeletingSocietyId] = useState<string | null>(
+    null,
+  );
 
-  const [societies,       setSocieties]       = useState<Society[]>([]);
-  const [loading,         setLoading]         = useState(true);
-  const [search,          setSearch]          = useState('');
-  const [confirmSociety,  setConfirmSociety]  = useState<Society | null>(null);
-  const [deleting,        setDeleting]        = useState(false);
-
-  // Redirect non-admins
   useEffect(() => {
-    if (!authLoading && !isSuperAdmin) router.push('/feed');
+    if (!authLoading && !isSuperAdmin) router.replace("/feed");
   }, [authLoading, isSuperAdmin, router]);
 
   useEffect(() => {
     if (!isSuperAdmin) return;
-    getAllSocieties()
-      .then(data => setSocieties(data))
-      .catch(() => toast.error('Failed to load societies'))
-      .finally(() => setLoading(false));
-  }, [isSuperAdmin]);
+    let active = true;
 
-  const filtered = societies.filter(s =>
-    !search ||
-    s.name.toLowerCase().includes(search.toLowerCase()) ||
-    s.organization.toLowerCase().includes(search.toLowerCase()),
+    getAllSocieties()
+      .then((data) => {
+        if (!active) return;
+        setSocieties(data);
+        setLoadState({ attempt: loadAttempt, status: "success" });
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        console.error("[SuperAdminPage] Failed to load societies:", error);
+        setLoadState({ attempt: loadAttempt, status: "error" });
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isSuperAdmin, loadAttempt]);
+
+  const loading = authLoading || loadState?.attempt !== loadAttempt;
+  const loadError = !loading && loadState?.status === "error";
+  const normalizedSearch = search.trim().toLocaleLowerCase();
+  const filtered = useMemo(
+    () =>
+      societies.filter((society) => {
+        if (!normalizedSearch) return true;
+        const searchableText = [
+          society.name,
+          society.organization,
+          society.city,
+          society.country,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLocaleLowerCase();
+        return searchableText.includes(normalizedSearch);
+      }),
+    [normalizedSearch, societies],
   );
 
+  const handleCancelDelete = useCallback(() => {
+    if (!deletingSocietyId) setConfirmSociety(null);
+  }, [deletingSocietyId]);
+
   const handleDeleteConfirmed = async () => {
-    if (!confirmSociety) return;
-    setDeleting(true);
+    if (!confirmSociety || deletingSocietyId) return;
+    const society = confirmSociety;
+    setDeletingSocietyId(society.id);
     try {
-      await deleteSociety(confirmSociety.id);
-      setSocieties(prev => prev.filter(s => s.id !== confirmSociety.id));
-      toast.success(`Society "${confirmSociety.name}" deleted`);
+      await deleteSociety(society.id);
+      setSocieties((current) =>
+        current.filter((item) => item.id !== society.id),
+      );
+      toast.success(`Society "${society.name}" deleted`);
       setConfirmSociety(null);
-    } catch {
-      toast.error('Failed to delete society.');
+    } catch (error) {
+      console.error("[SuperAdminPage] Failed to delete society:", error);
+      toast.error("Failed to delete society. Please try again.");
     } finally {
-      setDeleting(false);
+      setDeletingSocietyId(null);
     }
   };
 
-  if (authLoading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-tertiary)' }}>
-      Checking permissions…
-    </div>
-  );
+  if (authLoading) {
+    return (
+      <div
+        className="flex h-full items-center justify-center text-[var(--text-tertiary)]"
+        role="status"
+      >
+        Checking permissions…
+      </div>
+    );
+  }
 
   if (!isSuperAdmin) return null;
 
   return (
     <>
-      <div style={{ padding: 'var(--page-padding-y) var(--page-padding-x)' }}>
-
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 }}>
+      <main
+        className="p-[var(--page-padding-y)_var(--page-padding-x)]"
+        aria-labelledby="manage-societies-heading"
+      >
+        <header className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: 22, fontWeight: 800, marginBottom: 4 }}>🗂️ Manage Societies</h1>
-            <p style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
-              {loading ? 'Loading…' : `${societies.length} societies on the platform`}
-              <span style={{ marginLeft: 8, background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', color: '#ef4444', padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 600 }}>
+            <h1
+              id="manage-societies-heading"
+              className="mb-1 text-[22px] font-extrabold"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              🗂️ Manage Societies
+            </h1>
+            <p className="m-0 text-[13px] text-[var(--text-tertiary)]">
+              {loading
+                ? "Loading societies…"
+                : loadError
+                  ? "Could not load societies."
+                  : `${societies.length} societies on the platform`}
+              <span className="ml-2 rounded-full border border-red-500/25 bg-red-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-red-500">
                 ⚡ Super Admin
               </span>
             </p>
           </div>
+        </header>
+
+        <div
+          role="note"
+          className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-[13px] text-[var(--text-secondary)]"
+        >
+          <span aria-hidden="true">⚠️</span>
+          <span>
+            Deletion removes the society, its top-level posts, and follow
+            records. Nested post comments and post attachment files are not
+            currently removed. Society logo and banner cleanup is best-effort.
+            <strong className="text-red-500"> This cannot be undone.</strong>
+          </span>
         </div>
 
-        {/* Warning banner */}
-        <div style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 10, padding: '10px 16px', marginBottom: 20, display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--text-secondary)' }}>
-          <span style={{ fontSize: 16 }}>⚠️</span>
-          Deleting a society is <strong style={{ color: '#ef4444' }}>permanent and irreversible</strong>. All posts, members, and groups will be removed.
+        <div className="mb-4">
+          <label className="sr-only" htmlFor="society-search">
+            Search societies
+          </label>
+          <input
+            id="society-search"
+            className="input w-full sm:max-w-96"
+            type="search"
+            placeholder="Search name, organization, or location…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
         </div>
 
-        {/* Search */}
-        <div style={{ marginBottom: 16 }}>
-          <input className="input" style={{ maxWidth: 320 }} placeholder="🔍 Search by name or organization…" value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-
-        {/* Society list */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>Loading societies…</div>
+          <div
+            role="status"
+            className="p-10 text-center text-sm text-[var(--text-tertiary)]"
+          >
+            Loading societies…
+          </div>
+        ) : loadError ? (
+          <div className="p-10 text-center">
+            <p className="mb-4 text-sm text-[var(--text-secondary)]">
+              Societies could not be loaded. Check your connection and try
+              again.
+            </p>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => {
+                setSocieties([]);
+                setLoadAttempt((attempt) => attempt + 1);
+              }}
+            >
+              Try again
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-tertiary)' }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>🏛️</div>
-            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>No societies found</div>
-            {search && <p style={{ fontSize: 13 }}>Try a different search term.</p>}
+          <div className="p-10 text-center text-[var(--text-tertiary)] sm:p-14">
+            <div aria-hidden="true" className="mb-3 text-4xl">
+              🏛️
+            </div>
+            <h2 className="mb-1 text-[15px] font-semibold text-[var(--text-secondary)]">
+              No societies found
+            </h2>
+            {normalizedSearch && (
+              <p className="m-0 text-[13px]">Try a different search term.</p>
+            )}
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {filtered.map(society => (
-              <div
+          <div className="flex flex-col gap-2.5">
+            {filtered.map((society) => (
+              <SocietyRow
                 key={society.id}
-                style={{ background: 'var(--bg-card)', border: '1px solid var(--border-primary)', borderRadius: 'var(--radius-xl)', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 16, transition: 'border-color .2s' }}
-                onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.12)')}
-                onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border-primary)')}
-              >
-                {/* Logo */}
-                <div style={{ width: 48, height: 48, borderRadius: 10, flexShrink: 0, background: 'var(--gradient-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18, fontWeight: 700, color: '#fff', overflow: 'hidden' }}>
-                  {society.logoURL
-                    ? <img src={sanitizeImageUrl(society.logoURL)} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : society.name.slice(0, 2).toUpperCase()}
-                </div>
-
-                {/* Info */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                    <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-heading)' }}>{society.name}</span>
-                    {society.isVerified && (
-                      <span style={{ background: 'rgba(16,185,129,0.12)', color: '#10b981', padding: '1px 7px', borderRadius: 999, fontSize: 10, fontWeight: 700 }}>✓ Verified</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 3 }}>🎓 {society.organization} · {society.city}, {society.country}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
-                    <span>👥 {society.memberCount} members</span>
-                    <span>❤️ {society.followerCount} followers</span>
-                    <span style={{ fontFamily: 'monospace', fontSize: 10 }}>ID: {society.id.slice(0, 8)}…</span>
-                  </div>
-                </div>
-
-                {/* Delete */}
-                <button
-                  onClick={() => setConfirmSociety(society)}
-                  style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 'var(--radius-md)', color: '#ef4444', fontSize: 12, fontWeight: 600, cursor: 'pointer', transition: 'all .15s', fontFamily: 'var(--font-body)' }}
-                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.18)'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; }}
-                >
-                  🗑️ Delete
-                </button>
-              </div>
+                society={society}
+                onDelete={() => setConfirmSociety(society)}
+                deleteDisabled={deletingSocietyId !== null}
+              />
             ))}
           </div>
         )}
-      </div>
+      </main>
 
       {confirmSociety && (
         <ConfirmDeleteModal
           society={confirmSociety}
           onConfirm={handleDeleteConfirmed}
-          onCancel={() => setConfirmSociety(null)}
-          loading={deleting}
+          onCancel={handleCancelDelete}
+          loading={deletingSocietyId === confirmSociety.id}
         />
       )}
     </>

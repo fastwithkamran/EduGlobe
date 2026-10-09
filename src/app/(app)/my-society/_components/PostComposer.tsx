@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { createPost, uploadFile } from "@/lib/firestore";
 import {
@@ -15,8 +15,27 @@ import type {
   OpportunityMeta,
   Society,
 } from "@/types";
+import {
+  isValidOpportunityLink,
+  OpportunityMetaFields,
+  normalizeOpportunityMeta,
+} from "@/components/OpportunityMetaFields";
+import { AttachmentPreview } from "./AttachmentPreview";
 
 const MAX_CHARS = 500;
+const MAX_POST_IMAGES = 2;
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+// FIX: documents had no size or count limit at all.
+const MAX_DOC_SIZE = 10 * 1024 * 1024;
+const MAX_ATTACHMENTS = 5;
+
+const isImageFile = (file: File) => file.type.startsWith("image/");
+
+/** Storage-safe file name: no slashes, spaces or odd characters. */
+const safeFileName = (name: string) =>
+  name.replace(/[^\w.-]+/g, "_").replace(/^\.+/, "").slice(-100) || "file";
+
+type PendingFile = { file: File; previewUrl?: string };
 
 export function PostComposer({
   society,
@@ -29,31 +48,104 @@ export function PostComposer({
 }) {
   const [content, setContent] = useState("");
   const [type, setType] = useState<PostType>("announcement");
-  const [files, setFiles] = useState<File[]>([]);
+  const [files, setFiles] = useState<PendingFile[]>([]);
   const [meta, setMeta] = useState<OpportunityMeta>({});
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
+  const previewUrls = useRef(new Map<File, string>());
+  // Synchronous guard: state updates are async, so a fast double-click could
+  // otherwise publish the same post twice.
+  const publishingRef = useRef(false);
 
+  useEffect(() => {
+    const urls = previewUrls.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
+    };
+  }, []);
+
+  const clearFiles = () => {
+    previewUrls.current.forEach((url) => URL.revokeObjectURL(url));
+    previewUrls.current.clear();
+    setFiles([]);
+  };
+
+  const trimmedLength = content.trim().length;
   const isOpportunity = OPPORTUNITY_TYPES.includes(type);
   const selectedLabel =
     POST_TYPE_OPTIONS.find((o) => o.value === type)?.label ?? type;
 
+  const handleFilesSelected = (selected: File[]) => {
+    let imageCount = files.filter(({ file }) => isImageFile(file)).length;
+    let total = files.length;
+    const accepted: PendingFile[] = [];
+    let tooBig = false;
+    let tooManyImages = false;
+    let tooMany = false;
+
+    for (const file of selected) {
+      const image = isImageFile(file);
+      if (file.size > (image ? MAX_IMAGE_SIZE : MAX_DOC_SIZE)) {
+        tooBig = true;
+        continue;
+      }
+      if (total >= MAX_ATTACHMENTS) {
+        tooMany = true;
+        continue;
+      }
+      if (image && imageCount >= MAX_POST_IMAGES) {
+        tooManyImages = true;
+        continue;
+      }
+      total += 1;
+      if (image) {
+        imageCount += 1;
+        const previewUrl = URL.createObjectURL(file);
+        previewUrls.current.set(file, previewUrl);
+        accepted.push({ file, previewUrl });
+      } else {
+        accepted.push({ file });
+      }
+    }
+
+    if (tooBig) toast.error("Images must be 5 MB or smaller, files 10 MB");
+    if (tooManyImages)
+      toast.error(`Posts can include up to ${MAX_POST_IMAGES} images`);
+    if (tooMany)
+      toast.error(`Posts can include up to ${MAX_ATTACHMENTS} attachments`);
+    if (accepted.length) setFiles((current) => [...current, ...accepted]);
+  };
+
   const publish = async () => {
-    if (!content.trim()) return toast.error("Post content is required");
-    if (content.length > MAX_CHARS)
+    if (publishingRef.current) return;
+    if (!trimmedLength) return toast.error("Post content is required");
+    if (trimmedLength > MAX_CHARS)
       return toast.error(`Post exceeds ${MAX_CHARS} character limit`);
+    if (isOpportunity && !isValidOpportunityLink(meta.applyLink))
+      return toast.error("Enter a valid http or https application link");
+
+    publishingRef.current = true;
     setUploading(true);
+    setProgress(0);
     try {
       const attachments: PostAttachment[] = [];
-      for (const f of files) {
+      const totalBytes = files.reduce((sum, { file }) => sum + file.size, 0) || 1;
+      let doneBytes = 0;
+
+      for (const [index, { file: f }] of files.entries()) {
         const url = await uploadFile(
           f,
-          `posts/${society.id}/${Date.now()}_${f.name}`,
-          (p) => setProgress(p),
+          // FIX: sanitized + unique path (raw names could contain "/" etc.).
+          `posts/${society.id}/${Date.now()}_${index}_${safeFileName(f.name)}`,
+          // FIX: progress was per-file, so the bar reset for every upload.
+          (p) =>
+            setProgress(((doneBytes + (p / 100) * f.size) / totalBytes) * 100),
         );
+        doneBytes += f.size;
         attachments.push({
-          id: `${Date.now()}`,
+          id: `${Date.now()}-${index}`,
           fileName: f.name,
           fileURL: url,
           fileType: f.type,
@@ -61,11 +153,8 @@ export function PostComposer({
         });
       }
 
-      // Only include meta fields that have values
-      const opportunityMeta: OpportunityMeta | undefined = isOpportunity
-        ? Object.fromEntries(
-            Object.entries(meta).filter(([, v]) => v && String(v).trim()),
-          )
+      const opportunityMeta = isOpportunity
+        ? normalizeOpportunityMeta(meta)
         : undefined;
 
       await createPost({
@@ -76,21 +165,24 @@ export function PostComposer({
         authorName,
         content: content.trim(),
         type,
-        visibility: "public",
         attachments,
         ...(opportunityMeta && Object.keys(opportunityMeta).length
           ? { opportunityMeta }
           : {}),
       });
 
-      toast.success("Post published!");
+      toast.success("Post published");
       setContent("");
-      setFiles([]);
+      clearFiles();
       setProgress(0);
       setMeta({});
-    } catch {
-      toast.error("Failed to publish post");
+      if (fileRef.current) fileRef.current.value = "";
+    } catch (error) {
+      // FIX: errors were swallowed with no log, making failures undebuggable.
+      console.error("[PostComposer] Failed to publish post:", error);
+      toast.error("Couldn’t publish your post. Your draft is still here, so try again.");
     } finally {
+      publishingRef.current = false;
       setUploading(false);
     }
   };
@@ -105,43 +197,46 @@ export function PostComposer({
         marginBottom: 20,
       }}
     >
-      {/* Content textarea */}
       <textarea
         className="input w-full resize-y"
         rows={3}
+        aria-label="Post content"
         placeholder={`Share something with ${society.name}…`}
         value={content}
+        disabled={uploading}
         onChange={(e) => setContent(e.target.value)}
         style={{ marginBottom: 4 }}
       />
-      {/* Character counter */}
       <div
+        aria-live="polite"
         style={{
           textAlign: "right",
           fontSize: 11,
           marginBottom: 10,
           color:
-            content.length > MAX_CHARS
+            trimmedLength > MAX_CHARS
               ? "#ef4444"
-              : content.length > MAX_CHARS * 0.8
+              : trimmedLength > MAX_CHARS * 0.8
                 ? "#f59e0b"
                 : "var(--text-muted)",
         }}
       >
-        {content.length} / {MAX_CHARS}
+        {trimmedLength} / {MAX_CHARS}
       </div>
 
-      {/* Post type selector */}
       <div className="mb-3">
         <div className="text-[11px] text-[var(--text-muted)] mb-1.5">
-          Post Type
+          Post type
         </div>
         <div className="flex flex-wrap gap-1.5">
           {POST_TYPE_OPTIONS.map((o) => (
             <button
               key={o.value}
               type="button"
+              aria-pressed={type === o.value}
+              disabled={uploading}
               onClick={() => {
+                if (type === o.value) return; // FIX: re-clicking wiped the details
                 setType(o.value);
                 setMeta({});
               }}
@@ -149,7 +244,7 @@ export function PostComposer({
                 padding: "4px 10px",
                 borderRadius: 999,
                 fontSize: 12,
-                cursor: "pointer",
+                cursor: uploading ? "not-allowed" : "pointer",
                 border: "1px solid",
                 borderColor:
                   type === o.value
@@ -171,7 +266,6 @@ export function PostComposer({
         </div>
       </div>
 
-      {/* Opportunity Meta */}
       {isOpportunity && (
         <div
           style={{
@@ -187,93 +281,24 @@ export function PostComposer({
             className="text-[11px] font-semibold mb-2.5"
             style={{ color: TYPE_TEXTS[type] }}
           >
-            {selectedLabel} Details{" "}
+            {selectedLabel} details{" "}
             <span className="font-normal opacity-70">
-              — optional but recommended
+              (optional but recommended)
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <label className="block text-[11px] text-[var(--text-muted)] mb-1">
-                ⏰ Deadline
-              </label>
-              <input
-                type="date"
-                className="input w-full"
-                style={{ fontSize: 12 }}
-                value={meta.deadline ?? ""}
-                onChange={(e) =>
-                  setMeta((p) => ({ ...p, deadline: e.target.value }))
-                }
-              />
-            </div>
-            {type === "hackathon" && (
-              <div>
-                <label className="block text-[11px] text-[var(--text-muted)] mb-1">
-                  🏆 Prize / Reward
-                </label>
-                <input
-                  className="input w-full"
-                  placeholder="PKR 2.5M, USD 10K…"
-                  style={{ fontSize: 12 }}
-                  value={meta.prize ?? ""}
-                  onChange={(e) =>
-                    setMeta((p) => ({ ...p, prize: e.target.value }))
-                  }
-                />
-              </div>
-            )}
-            <div>
-              <label className="block text-[11px] text-[var(--text-muted)] mb-1">
-                📍 Location
-              </label>
-              <input
-                className="input w-full"
-                placeholder="Online / Karachi / Remote"
-                style={{ fontSize: 12 }}
-                value={meta.location ?? ""}
-                onChange={(e) =>
-                  setMeta((p) => ({ ...p, location: e.target.value }))
-                }
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] text-[var(--text-muted)] mb-1">
-                🏛 Organizer
-              </label>
-              <input
-                className="input w-full"
-                placeholder="Google, LUMS, HEC…"
-                style={{ fontSize: 12 }}
-                value={meta.organizer ?? ""}
-                onChange={(e) =>
-                  setMeta((p) => ({ ...p, organizer: e.target.value }))
-                }
-              />
-            </div>
-            <div className="col-span-2">
-              <label className="block text-[11px] text-[var(--text-muted)] mb-1">
-                🔗 Apply Link
-              </label>
-              <input
-                type="url"
-                className="input w-full"
-                placeholder="https://..."
-                style={{ fontSize: 12 }}
-                value={meta.applyLink ?? ""}
-                onChange={(e) =>
-                  setMeta((p) => ({ ...p, applyLink: e.target.value }))
-                }
-              />
-            </div>
-          </div>
+          <OpportunityMetaFields
+            type={type}
+            value={meta}
+            onChange={setMeta}
+            disabled={uploading}
+          />
         </div>
       )}
 
-      {/* Attach + Publish row */}
-      <div className="flex items-center gap-2.5">
+      <div className="flex flex-wrap items-center gap-2.5">
         <button
           type="button"
+          disabled={uploading}
           onClick={() => fileRef.current?.click()}
           style={{
             background: "none",
@@ -282,10 +307,10 @@ export function PostComposer({
             padding: "6px 12px",
             fontSize: 12,
             color: "var(--text-tertiary)",
-            cursor: "pointer",
+            cursor: uploading ? "not-allowed" : "pointer",
           }}
         >
-          📎 Attach file / image
+          📎 Attach file or image
         </button>
         <input
           ref={fileRef}
@@ -294,45 +319,49 @@ export function PostComposer({
           accept="image/*,.pdf,.doc,.docx,.ppt,.pptx"
           className="hidden"
           onChange={(e) => {
-            if (e.target.files) setFiles(Array.from(e.target.files));
+            handleFilesSelected(Array.from(e.target.files ?? []));
+            e.target.value = "";
           }}
         />
-        {files.length > 0 && (
-          <div
-            className="text-[12px] flex-1 min-w-0"
-            style={{ color: "var(--primary-400)" }}
-          >
-            <span className="truncate">
-              {files.map((f) => f.name).join(", ")}
-            </span>
-            <button
-              onClick={() => setFiles([])}
-              style={{
-                background: "none",
-                border: "none",
-                color: "#ef4444",
-                fontSize: 14,
-                cursor: "pointer",
-                marginLeft: 6,
-              }}
-            >
-              ×
-            </button>
-          </div>
-        )}
+        <span className="text-[11px] text-[var(--text-muted)]">
+          Up to 2 images (5 MB each), 5 attachments total
+        </span>
         <button
           className="btn btn-primary btn-sm"
+          type="button"
           onClick={publish}
-          disabled={uploading || !content.trim() || content.length > MAX_CHARS}
+          disabled={uploading || !trimmedLength || trimmedLength > MAX_CHARS}
           style={{ marginLeft: "auto" }}
         >
-          {uploading ? `${Math.round(progress)}%` : "📤 Publish"}
+          {uploading ? `Publishing ${Math.round(progress)}%` : "📤 Publish"}
         </button>
       </div>
 
-      {/* Upload progress bar */}
+      {files.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {files.map(({ file, previewUrl }, index) => (
+            <AttachmentPreview
+              key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
+              file={file}
+              previewUrl={previewUrl}
+              disabled={uploading}
+              onRemove={() => {
+                const url = previewUrls.current.get(file);
+                if (url) URL.revokeObjectURL(url);
+                previewUrls.current.delete(file);
+                setFiles((current) => current.filter((_, i) => i !== index));
+              }}
+            />
+          ))}
+        </div>
+      )}
+
       {uploading && (
         <div
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(progress)}
           style={{
             height: 3,
             background: "var(--bg-tertiary)",
