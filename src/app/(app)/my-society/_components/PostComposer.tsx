@@ -220,7 +220,7 @@ export function PostComposer({
         className="input w-full resize-y"
         rows={3}
         aria-label="Post content"
-        placeholder={`Share something with ${society.name}…`}
+        placeholder={`Share something with the students…`}
         value={content}
         disabled={uploading}
         onChange={(e) => setContent(e.target.value)}
