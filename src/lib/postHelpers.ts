@@ -50,20 +50,20 @@ export const TYPE_TEXTS: Record<PostType, string> = {
 
 /** Post type dropdown options — includes opportunity types */
 export const POST_TYPE_OPTIONS: Array<{ value: PostType; label: string }> = [
-  { value: "announcement", label: "📢 Announcement" },
-  { value: "event", label: "📅 Event" },
-  { value: "hackathon", label: "💻 Hackathon" },
-  { value: "scholarship", label: "🎓 Scholarship" },
-  { value: "internship", label: "💼 Internship" },
+  { value: "announcement", label: "Announcement" },
+  { value: "event", label: "Event" },
+  { value: "hackathon", label: "Hackathon" },
+  { value: "scholarship", label: "Scholarship" },
+  { value: "internship", label: "Internship" },
 ];
 
-/** Emoji icon per post type */
+/** Fallback emoji icon per post type (prefer React Icons in UI components) */
 export const TYPE_EMOJI: Record<PostType, string> = {
-  announcement: "📢",
-  event: "📅",
-  hackathon: "💻",
-  scholarship: "🎓",
-  internship: "💼",
+  announcement: "",
+  event: "",
+  hackathon: "",
+  scholarship: "",
+  internship: "",
 };
 
 /** Days remaining until a deadline string, or null if not set.

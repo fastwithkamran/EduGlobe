@@ -1,5 +1,12 @@
-"use client";
-
+import {
+  FiClock,
+  FiCalendar,
+  FiAward,
+  FiMapPin,
+  FiGlobe,
+  FiExternalLink,
+} from "react-icons/fi";
+import { HiOutlineAcademicCap, HiOutlineBuildingLibrary } from "react-icons/hi2";
 import {
   daysUntil,
   formatOpportunityDate,
@@ -27,14 +34,14 @@ function MetadataItem({
   emphasized = false,
   color,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   children: React.ReactNode;
   emphasized?: boolean;
   color?: string;
 }) {
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <span aria-hidden="true" className="shrink-0 text-[13px]">
+      <span aria-hidden="true" className="shrink-0 text-[13px] flex items-center">
         {icon}
       </span>
       <span
@@ -80,35 +87,53 @@ export function OpportunityCard({
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
         {deadline && (
-          <MetadataItem icon="⏰" emphasized color={deadlinePresentation.color}>
+          <MetadataItem
+            icon={<FiClock className="w-3.5 h-3.5" />}
+            emphasized
+            color={deadlinePresentation.color}
+          >
             {deadlinePresentation.label} · {deadline}
           </MetadataItem>
         )}
         {(startDate || endDate) && (
-          <MetadataItem icon="📅">
+          <MetadataItem icon={<FiCalendar className="w-3.5 h-3.5" />}>
             {startDate && endDate
               ? `${startDate} – ${endDate}`
               : (startDate ?? endDate)}
           </MetadataItem>
         )}
         {meta.prize && (
-          <MetadataItem icon="🏅" emphasized color="#fbbf24">
+          <MetadataItem
+            icon={<FiAward className="w-3.5 h-3.5" />}
+            emphasized
+            color="#fbbf24"
+          >
             {meta.prize}
           </MetadataItem>
         )}
         {meta.funding && (
-          <MetadataItem icon="🎓" emphasized color="#fbbf24">
+          <MetadataItem
+            icon={<HiOutlineAcademicCap className="w-3.5 h-3.5" />}
+            emphasized
+            color="#fbbf24"
+          >
             {meta.funding}
           </MetadataItem>
         )}
         {meta.location && (
-          <MetadataItem icon="📍">{meta.location}</MetadataItem>
+          <MetadataItem icon={<FiMapPin className="w-3.5 h-3.5" />}>
+            {meta.location}
+          </MetadataItem>
         )}
         {meta.country && meta.country !== meta.location && (
-          <MetadataItem icon="🌍">{meta.country}</MetadataItem>
+          <MetadataItem icon={<FiGlobe className="w-3.5 h-3.5" />}>
+            {meta.country}
+          </MetadataItem>
         )}
         {meta.organizer && (
-          <MetadataItem icon="🏛">{meta.organizer}</MetadataItem>
+          <MetadataItem icon={<HiOutlineBuildingLibrary className="w-3.5 h-3.5" />}>
+            {meta.organizer}
+          </MetadataItem>
         )}
       </div>
 
@@ -145,10 +170,10 @@ export function OpportunityCard({
           href={applyLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-9 self-start items-center rounded-lg px-4 py-2 text-[13px] font-bold transition-opacity hover:opacity-90 shadow-sm"
+          className="inline-flex min-h-9 self-start items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-bold transition-opacity hover:opacity-90 shadow-sm"
           style={{ background: color, color: "#ffffff" }}
         >
-          🚀 {actionLabel}
+          <FiExternalLink className="w-4 h-4" /> {actionLabel}
         </a>
       )}
     </section>

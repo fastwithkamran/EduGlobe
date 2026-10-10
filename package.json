@@ -20,7 +20,8 @@
     "postcss": "^8.5.23",
     "react": "^19.2.7",
     "react-dom": "^19.2.1",
-    "react-hot-toast": "^2.6.0"
+    "react-hot-toast": "^2.6.0",
+    "react-icons": "^5.7.0"
   },
   "overrides": {
     "jose": "4.15.9"

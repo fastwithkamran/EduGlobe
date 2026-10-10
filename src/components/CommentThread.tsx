@@ -8,6 +8,7 @@ import { subscribeToComments, addComment } from "@/lib/firestore";
 import { getInitials } from "@/lib/postHelpers";
 import { sanitizeImageUrl } from "@/lib/utils";
 import type { PostComment } from "@/types";
+import { FiSend, FiLoader } from "react-icons/fi";
 
 const MAX_COMMENT_LENGTH = 100;
 
@@ -246,12 +247,20 @@ export function CommentThread({ postId }: { postId: string }) {
           </span>
           <button
             type="submit"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
             disabled={
               sending || !text.trim() || text.trim().length > MAX_COMMENT_LENGTH
             }
           >
-            {sending ? "Posting…" : "Post"}
+            {sending ? (
+              <>
+                <FiLoader className="animate-spin text-xs" /> Posting…
+              </>
+            ) : (
+              <>
+                <FiSend className="text-xs" /> Post
+              </>
+            )}
           </button>
         </form>
       )}
