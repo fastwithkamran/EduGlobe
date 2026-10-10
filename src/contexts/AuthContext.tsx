@@ -14,7 +14,11 @@ import {
   onAuthStateChanged,
   signOut,
   GoogleAuthProvider,
+  browserLocalPersistence,
+  getRedirectResult,
   signInWithPopup,
+  setPersistence,
+  signInWithRedirect,
 } from "firebase/auth";
 import { doc, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -53,6 +57,49 @@ export const useAuth = () => {
   return context;
 };
 
+// ─── Profile bootstrap ────────────────────────────────────────────────────────
+
+/**
+ * Read the profile first and only create the skeleton doc when it is missing.
+ *
+ * The old flow ran a Firestore transaction on EVERY sign-in/page load. Transactions
+ * need a live server connection, so returning users on a weak or offline
+ * connection got a profile error even though their profile was cached — and every
+ * session paid an extra server round trip. The transaction is kept for creation
+ * so two tabs can't both "create" the doc (the second write would be an UPDATE
+ * that the rules reject).
+ */
+async function ensureUserProfile(
+  firebaseUser: FirebaseUser,
+): Promise<UserProfile | null> {
+  const existing = await getUserProfile(firebaseUser.uid);
+  if (existing) return existing;
+
+  const userDocRef = doc(db, "users", firebaseUser.uid);
+  await runTransaction(db, async (transaction) => {
+    const userSnap = await transaction.get(userDocRef);
+    if (userSnap.exists()) return;
+    transaction.set(userDocRef, {
+      uid: firebaseUser.uid,
+      email: firebaseUser.email ?? "",
+      displayName:
+        firebaseUser.displayName ||
+        firebaseUser.email?.split("@")[0] ||
+        "New User",
+      photoURL: firebaseUser.photoURL ?? null,
+      role: null,
+      societyId: null,
+      universityName: "",
+      bio: "",
+      contactInfo: "",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
+
+  return getUserProfile(firebaseUser.uid);
+}
+
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -62,11 +109,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profileError, setProfileError] = useState<Error | null>(null);
   const authStateVersion = useRef(0);
 
+  // UI convenience only — Firestore rules / server routes must enforce admin access themselves.
   const isSuperAdmin = userProfile?.role === "super_admin";
 
   // ── Single source of truth for auth state ─────────────────────────────────
   useEffect(() => {
     let active = true;
+
+    // Keep students signed in until they sign out. The SDK renews the 1-hour ID
+    // token automatically using the refresh token, so no re-login is needed.
+    // Set on mount (not inside loginWithGoogle) so no await sits between the
+    // click and the sign-in popup, which would get the popup blocked.
+    setPersistence(auth, browserLocalPersistence).catch((err) => {
+      console.warn("[AuthContext] Could not enable persistent login:", err);
+    });
+
+    // Completes a signInWithRedirect fallback (see loginWithGoogle). Success is
+    // picked up by onAuthStateChanged; this only reports failures.
+    getRedirectResult(auth).catch((err) => {
+      if (active) console.error("[AuthContext] Redirect sign-in failed:", err);
+    });
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       const version = ++authStateVersion.current;
       setLoading(true);
@@ -84,30 +147,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setUserProfile(null);
 
       try {
-        // ── First sign-in: create the skeleton doc ──────────────────────────
-        // A transaction makes check-then-create atomic. A plain getDoc + setDoc
-        // let two tabs both "create" the doc; the second write is an UPDATE
-        // that the rules reject, surfacing a bogus profile error.
-        const userDocRef = doc(db, "users", firebaseUser.uid);
-        await runTransaction(db, async (transaction) => {
-          const userSnap = await transaction.get(userDocRef);
-          if (userSnap.exists()) return;
-          transaction.set(userDocRef, {
-            uid: firebaseUser.uid,
-            email: firebaseUser.email ?? "",
-            displayName: firebaseUser.displayName ?? "New User",
-            photoURL: firebaseUser.photoURL ?? null,
-            role: null,
-            societyId: null,
-            universityName: "",
-            bio: "",
-            contactInfo: "",
-            createdAt: serverTimestamp(),
-            updatedAt: serverTimestamp(),
-          });
-        });
-
-        const profile = await getUserProfile(firebaseUser.uid);
+        const profile = await ensureUserProfile(firebaseUser);
         if (!active || version !== authStateVersion.current) return;
         setUserProfile(profile);
       } catch (err) {
@@ -147,7 +187,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const version = authStateVersion.current;
     setProfileError(null);
     try {
-      const profile = await getUserProfile(uid);
+      const profile = await ensureUserProfile(current);
       if (
         auth.currentUser?.uid === uid &&
         version === authStateVersion.current
@@ -190,6 +230,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         code === "auth/popup-closed-by-user" ||
         code === "auth/cancelled-popup-request"
       ) {
+        return;
+      }
+      // In-app browsers (Instagram/WhatsApp/Facebook) and some mobile Safari
+      // setups block popups outright — fall back to a full-page redirect
+      // instead of leaving the user with a dead "Sign in" button.
+      if (
+        code === "auth/popup-blocked" ||
+        code === "auth/operation-not-supported-in-this-environment"
+      ) {
+        await signInWithRedirect(auth, provider);
         return;
       }
       throw err;
