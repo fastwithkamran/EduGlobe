@@ -229,6 +229,13 @@
     rgba(0, 0, 0, 0.015) 0%,
     rgba(0, 0, 0, 0.005) 100%
   );
+  /* The dark-theme gradient ends in bright gold, which is unreadable on light surfaces */
+  --gradient-text: linear-gradient(
+    135deg,
+    #047857 0%,
+    #059669 45%,
+    #b45309 100%
+  );
 }
 
 /* ─── Layers ─────────────────────────────────────────────────────────────────
@@ -407,20 +414,22 @@
     white-space: nowrap;
     text-decoration: none;
     position: relative;
-    overflow: hidden;
   }
 
-  .btn::after {
+  /* Hover gloss lives on ::before — ::after is reserved for [data-tooltip], and the
+     old overflow:hidden clipped every tooltip on a button. */
+  .btn::before {
     content: "";
     pointer-events: none;
     position: absolute;
     inset: 0;
+    border-radius: inherit;
     background: linear-gradient(rgba(255, 255, 255, 0.1), transparent);
     opacity: 0;
     transition: opacity var(--transition-fast);
   }
 
-  .btn:hover::after {
+  .btn:hover::before {
     opacity: 1;
   }
 
@@ -494,8 +503,8 @@
     box-shadow: none;
   }
 
-  .btn:disabled::after,
-  .btn[aria-disabled="true"]::after {
+  .btn:disabled::before,
+  .btn[aria-disabled="true"]::before {
     opacity: 0;
   }
 
@@ -708,7 +717,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: fadeIn 0.2s ease;
+    animation: overlayFade 0.2s ease;
   }
 
   .modal {
@@ -947,6 +956,33 @@
     display: flex;
     flex-direction: column;
   }
+
+  /* Touch screens: :hover sticks after a tap, leaving cards/buttons lifted and
+     tooltips stuck open. Keep focus-visible tooltips for keyboard users. */
+  @media (hover: none) {
+    .btn-primary:hover,
+    .btn-gold:hover,
+    .btn-danger:hover,
+    .card:hover {
+      transform: none;
+    }
+
+    [data-tooltip]:hover:not(:focus-visible)::after {
+      opacity: 0;
+    }
+  }
+
+  /* Minimum comfortable touch target */
+  @media (pointer: coarse) {
+    .btn-icon {
+      width: 44px;
+      height: 44px;
+    }
+
+    .tab {
+      min-height: 44px;
+    }
+  }
 }
 
 /* --- Keyframes (not layered) --- */
@@ -956,6 +992,15 @@
   }
   100% {
     background-position: -200% 0;
+  }
+}
+
+@keyframes overlayFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 
@@ -1214,6 +1259,10 @@
   }
 
   @media (max-width: 480px) {
+    .modal {
+      padding: var(--space-5);
+    }
+
     .btn-lg {
       padding: var(--space-3) var(--space-6);
       font-size: var(--text-sm);
@@ -1250,5 +1299,13 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* A frozen spinner reads as a hung page; slow it down instead of stopping it. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation-duration: 1.5s !important;
+    animation-iteration-count: infinite !important;
   }
 }

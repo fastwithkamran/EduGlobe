@@ -94,8 +94,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Required for env(safe-area-inset-*) on notched iPhones (mobile bottom nav).
   viewportFit: "cover",
-  colorScheme: "light dark",
-  // The app defaults to light and only goes dark via the stored toggle.
+  // Light default; the inline theme script below keeps this meta in sync with the dark toggle.
   themeColor: "#f0f4f8",
 };
 
@@ -122,6 +121,12 @@ const toastError: CSSProperties = {
   borderLeft: "4px solid #ef4444",
 };
 
+/**
+ * Runs before first paint: applies the stored theme and keeps <meta name="theme-color">
+ * (mobile browser chrome) in sync with it — including later toggles, via the observer.
+ */
+const THEME_INIT_SCRIPT = `(function(){var d=document.documentElement;function sync(){var dark=d.dataset.theme!=='light';var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute('content',dark?'#060b18':'#f0f4f8');}try{if(localStorage.getItem('opportune-theme')==='dark'){delete d.dataset.theme;}else{d.dataset.theme='light';}}catch(e){}try{new MutationObserver(sync).observe(d,{attributes:true,attributeFilter:['data-theme']});}catch(e){}document.addEventListener('DOMContentLoaded',sync);sync();})();`;
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // suppressHydrationWarning: the inline script sets data-theme on <html>
@@ -131,7 +136,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         {/* Anti-FOUC: read theme from localStorage before first paint; defaults to light */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('opportune-theme');if(t==='dark'){delete document.documentElement.dataset.theme;}else{document.documentElement.dataset.theme='light';}}catch(e){}})();`,
+            __html: THEME_INIT_SCRIPT,
           }}
         />
       </head>
