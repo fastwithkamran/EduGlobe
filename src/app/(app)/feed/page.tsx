@@ -11,6 +11,24 @@ import { TYPE_TEXTS } from "@/lib/postHelpers";
 import { PostCard } from "./_components/PostCard";
 import { FeedSkeleton } from "./_components/FeedSkeleton";
 import type { Post, PostType } from "@/types";
+import {
+  FiSearch,
+  FiX,
+  FiGlobe,
+  FiZap,
+  FiBell,
+  FiInbox,
+  FiLock,
+  FiArrowUp,
+  FiCode,
+  FiBriefcase,
+  FiCalendar,
+} from "react-icons/fi";
+import {
+  HiOutlineSparkles,
+  HiOutlineAcademicCap,
+  HiOutlineMegaphone,
+} from "react-icons/hi2";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -18,13 +36,17 @@ const PAGE_SIZE = 15;
 
 type FeedTab = "all" | "following";
 
-const TYPE_FILTERS: Array<{ value: PostType | "all"; label: string }> = [
-  { value: "all", label: "✨ All" },
-  { value: "hackathon", label: "💻 Hackathons" },
-  { value: "scholarship", label: "🎓 Scholarships" },
-  { value: "internship", label: "💼 Internships" },
-  { value: "announcement", label: "📢 Announcements" },
-  { value: "event", label: "📅 Events" },
+const TYPE_FILTERS: Array<{
+  value: PostType | "all";
+  label: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+}> = [
+  { value: "all", label: "All", icon: HiOutlineSparkles },
+  { value: "hackathon", label: "Hackathons", icon: FiCode },
+  { value: "scholarship", label: "Scholarships", icon: HiOutlineAcademicCap },
+  { value: "internship", label: "Internships", icon: FiBriefcase },
+  { value: "announcement", label: "Announcements", icon: HiOutlineMegaphone },
+  { value: "event", label: "Events", icon: FiCalendar },
 ];
 
 // ─── Page ──────────────────────────────────────────────────────────────────────
@@ -273,16 +295,18 @@ export default function GlobalFeedPage() {
                 fontSize: 22,
                 fontWeight: 800,
                 marginBottom: 4,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
               }}
             >
-              🌐 Global Opportunity Feed
+              <FiGlobe className="text-[var(--primary-400)]" /> Global Opportunity Feed
             </h1>
-            <p style={{ color: "var(--text-tertiary)", fontSize: 13 }}>
+            <p style={{ color: "var(--text-tertiary)", fontSize: 13, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
               Discover posts from institutes around the world
               {isSuperAdmin && (
                 <span
                   style={{
-                    marginLeft: 8,
                     background: "rgba(239,68,68,0.1)",
                     border: "1px solid rgba(239,68,68,0.25)",
                     color: "#ef4444",
@@ -290,9 +314,12 @@ export default function GlobalFeedPage() {
                     borderRadius: 999,
                     fontSize: 11,
                     fontWeight: 600,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
                   }}
                 >
-                  ⚡ Super Admin Mode
+                  <FiZap className="text-[10px]" /> Super Admin Mode
                 </span>
               )}
             </p>
@@ -311,11 +338,12 @@ export default function GlobalFeedPage() {
                 top: "50%",
                 transform: "translateY(-50%)",
                 color: "var(--text-muted)",
-                fontSize: 14,
                 pointerEvents: "none",
+                display: "flex",
+                alignItems: "center",
               }}
             >
-              🔍
+              <FiSearch style={{ width: 14, height: 14 }} />
             </span>
             <input
               id="feed-search"
@@ -339,10 +367,13 @@ export default function GlobalFeedPage() {
                   border: "none",
                   color: "var(--text-muted)",
                   cursor: "pointer",
-                  fontSize: 16,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: 2,
                 }}
               >
-                ×
+                <FiX style={{ width: 14, height: 14 }} />
               </button>
             )}
           </div>
@@ -375,13 +406,24 @@ export default function GlobalFeedPage() {
                 cursor: "pointer",
                 transition: "all .15s",
                 fontFamily: "var(--font-body)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              {feedTab === "all" ? "🌐 All Posts" : "🔔 Following"}
+              {feedTab === "all" ? (
+                <>
+                  <FiGlobe style={{ width: 14, height: 14 }} /> All Posts
+                </>
+              ) : (
+                <>
+                  <FiBell style={{ width: 14, height: 14 }} /> Following
+                </>
+              )}
               {feedTab === "following" && followedIds.size > 0 && (
                 <span
                   style={{
-                    marginLeft: 6,
+                    marginLeft: 2,
                     background: "rgba(16,185,129,0.15)",
                     color: "var(--primary-400)",
                     padding: "1px 6px",
@@ -415,7 +457,7 @@ export default function GlobalFeedPage() {
             >
               {TYPE_FILTERS.map(({ value, label }) => (
                 <option key={value} value={value}>
-                  {label.replace(/^[^A-Za-z]+/, "")}
+                  {label}
                 </option>
               ))}
             </select>
@@ -431,7 +473,7 @@ export default function GlobalFeedPage() {
             padding: "12px 0 4px",
           }}
         >
-          {TYPE_FILTERS.map(({ value, label }) => {
+          {TYPE_FILTERS.map(({ value, label, icon: FilterIcon }) => {
             const active = typeFilter === value;
             const color =
               value !== "all"
@@ -444,6 +486,9 @@ export default function GlobalFeedPage() {
                 aria-pressed={active}
                 onClick={() => setTypeFilter(value)}
                 style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
                   padding: "4px 12px",
                   borderRadius: 999,
                   fontSize: 12,
@@ -456,7 +501,8 @@ export default function GlobalFeedPage() {
                   transition: "all .15s",
                 }}
               >
-                {label}
+                <FilterIcon style={{ width: 13, height: 13 }} />
+                <span>{label}</span>
               </button>
             );
           })}
@@ -495,7 +541,7 @@ export default function GlobalFeedPage() {
               animation: "pulse 2s ease-in-out infinite",
             }}
           >
-            ⬆ {pendingCount} new post{pendingCount !== 1 ? "s" : ""} — tap to
+            <FiArrowUp style={{ width: 14, height: 14 }} /> {pendingCount} new post{pendingCount !== 1 ? "s" : ""} — tap to
             show
           </button>
         </div>
@@ -513,7 +559,22 @@ export default function GlobalFeedPage() {
           <FeedSkeleton />
         ) : tab === "following" && !user ? (
           <div style={{ textAlign: "center", padding: "80px 24px" }}>
-            <div style={{ fontSize: 52, marginBottom: 16 }}>🔒</div>
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "rgba(16,185,129,0.1)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--primary-400)",
+                }}
+              >
+                <FiLock style={{ width: 24, height: 24 }} />
+              </div>
+            </div>
             <div
               style={{
                 fontSize: 18,
@@ -589,14 +650,27 @@ export default function GlobalFeedPage() {
         ) : filteredPosts.length === 0 ? (
           // Empty / no results
           <div style={{ textAlign: "center", padding: "80px 24px" }}>
-            <div
-              style={{
-                fontSize: 52,
-                marginBottom: 16,
-                filter: "grayscale(0.2)",
-              }}
-            >
-              {search ? "🔍" : tab === "following" ? "🔔" : "📭"}
+            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "var(--bg-input)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--text-tertiary)",
+                }}
+              >
+                {search ? (
+                  <FiSearch style={{ width: 24, height: 24 }} />
+                ) : tab === "following" ? (
+                  <FiBell style={{ width: 24, height: 24 }} />
+                ) : (
+                  <FiInbox style={{ width: 24, height: 24 }} />
+                )}
+              </div>
             </div>
             <div
               style={{
@@ -637,32 +711,36 @@ export default function GlobalFeedPage() {
                 type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setSearch("")}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                ✕ Clear Search
+                <FiX style={{ width: 14, height: 14 }} /> Clear Search
               </button>
             ) : typeFilter !== "all" ? (
               <button
                 type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setTypeFilter("all")}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                ✕ Show All Types
+                <FiX style={{ width: 14, height: 14 }} /> Show All Types
               </button>
             ) : tab === "following" ? (
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
                 onClick={() => setTab("all")}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                🌐 Browse All Posts
+                <FiGlobe style={{ width: 14, height: 14 }} /> Browse All Posts
               </button>
             ) : (
               <button
                 type="button"
                 className="btn btn-outline btn-sm"
                 onClick={() => setTab("all")}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                🌐 Browse All Posts
+                <FiGlobe style={{ width: 14, height: 14 }} /> Browse All Posts
               </button>
             )}
           </div>

@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { AboutTab } from "../../my-society/_components/AboutTab";
 import { getSociety } from "@/lib/firestore";
 import type { Society } from "@/types";
+import { FiX } from "react-icons/fi";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -128,7 +129,7 @@ export function SocietyAboutDialog({
             aria-label="Close society information"
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-[var(--border-primary)] text-lg text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
           >
-            ×
+            <FiX className="w-5 h-5" />
           </button>
         </header>
 

@@ -11,19 +11,30 @@ import { sanitizeImageUrl } from "@/lib/utils";
 import { useTheme } from "@/hooks/useTheme";
 import Loader from "../../components/Loader";
 import Image from "next/image";
+import {
+  FiGlobe,
+  FiBell,
+  FiSettings,
+  FiLayers,
+  FiSun,
+  FiMoon,
+  FiLogOut,
+  FiZap,
+} from "react-icons/fi";
+import { HiOutlineBuildingLibrary, HiOutlineSparkles } from "react-icons/hi2";
 
 const NAV_ITEMS = [
   {
     section: "Discover",
-    items: [{ label: "Global Feed", href: "/feed", icon: "🌐" }],
+    items: [{ label: "Global Feed", href: "/feed", icon: FiGlobe }],
   },
   {
     section: "Community",
-    items: [{ label: "Society", href: "/my-society", icon: "🏛️" }],
+    items: [{ label: "Society", href: "/my-society", icon: HiOutlineBuildingLibrary }],
   },
   {
     section: "AI Tools",
-    items: [{ label: "AI Assistant", href: "/ai", icon: "🤖" }],
+    items: [{ label: "AI Assistant", href: "/ai", icon: HiOutlineSparkles }],
   },
   {
     section: "Account",
@@ -31,10 +42,10 @@ const NAV_ITEMS = [
       {
         label: "Notifications",
         href: "/notifications",
-        icon: "🔔",
+        icon: FiBell,
         dynamic: "unread" as const,
       },
-      { label: "Settings", href: "/settings", icon: "⚙️" },
+      { label: "Settings", href: "/settings", icon: FiSettings },
     ],
   },
   {
@@ -44,7 +55,7 @@ const NAV_ITEMS = [
       {
         label: "Manage Societies",
         href: "/super-admin",
-        icon: "🗂️",
+        icon: FiLayers,
         superAdminOnly: true,
       },
     ],
@@ -169,11 +180,11 @@ export default function AdminLayout({
   };
 
   const mobileNavItems = [
-    { label: "Feed", href: "/feed", icon: "🌐" },
-    { label: "Society", href: "/my-society", icon: "🏛️" },
-    { label: "AI", href: "/ai", icon: "🤖" },
-    { label: "Alerts", href: "/notifications", icon: "🔔", badge: unreadCount },
-    { label: "Profile", href: "/settings", icon: "⚙️" },
+    { label: "Feed", href: "/feed", icon: FiGlobe },
+    { label: "Society", href: "/my-society", icon: HiOutlineBuildingLibrary },
+    { label: "AI", href: "/ai", icon: HiOutlineSparkles },
+    { label: "Alerts", href: "/notifications", icon: FiBell, badge: unreadCount },
+    { label: "Profile", href: "/settings", icon: FiSettings },
   ];
 
   return (
@@ -219,7 +230,19 @@ export default function AdminLayout({
           </span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {isSuperAdmin && <span style={{ fontSize: 14 }}>⚡</span>}
+          {isSuperAdmin && (
+            <span
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                color: "#ef4444",
+                fontSize: 13,
+              }}
+              title="Super Admin"
+            >
+              <FiZap />
+            </span>
+          )}
           <button
             type="button"
             onClick={toggleTheme}
@@ -228,12 +251,19 @@ export default function AdminLayout({
               background: "var(--bg-input)",
               border: "1px solid var(--border-primary)",
               borderRadius: 8,
-              padding: "4px 8px",
+              padding: "6px 8px",
               cursor: "pointer",
-              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--text-secondary)",
             }}
           >
-            {theme === "dark" ? "☀️" : "🌙"}
+            {theme === "dark" ? (
+              <FiSun className="w-4 h-4 text-amber-400" />
+            ) : (
+              <FiMoon className="w-4 h-4 text-slate-300" />
+            )}
           </button>
           {!user && (
             <button
@@ -314,7 +344,7 @@ export default function AdminLayout({
               color: "#ef4444",
             }}
           >
-            <span>⚡</span> Super Admin Mode
+            <FiZap style={{ width: 14, height: 14, display: "inline-block" }} /> Super Admin Mode
           </div>
         )}
 
@@ -385,13 +415,14 @@ export default function AdminLayout({
                     >
                       <span
                         style={{
-                          fontSize: 14,
                           width: 18,
-                          textAlign: "center",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                           flexShrink: 0,
                         }}
                       >
-                        {item.icon}
+                        <item.icon style={{ width: 16, height: 16 }} />
                       </span>
                       {item.label}
                       {Boolean(badge > 0) && (
@@ -495,11 +526,15 @@ export default function AdminLayout({
                       color: isSuperAdmin ? "#ef4444" : "var(--text-tertiary)",
                     }}
                   >
-                    {isSuperAdmin
-                      ? "⚡ Super Admin"
-                      : userProfile?.role === "admin"
-                        ? "Society Admin"
-                        : "Viewer"}
+                    {isSuperAdmin ? (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <FiZap style={{ width: 12, height: 12 }} /> Super Admin
+                      </span>
+                    ) : userProfile?.role === "admin" ? (
+                      "Society Admin"
+                    ) : (
+                      "Viewer"
+                    )}
                   </div>
                 </div>
               </div>
@@ -525,7 +560,9 @@ export default function AdminLayout({
                     (e.currentTarget.style.color = "var(--text-tertiary)")
                   }
                 >
-                  🚪 Log Out
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <FiLogOut style={{ width: 14, height: 14 }} /> Log Out
+                  </span>
                 </button>
                 {/* Theme toggle */}
                 <button
@@ -548,7 +585,11 @@ export default function AdminLayout({
                     flexShrink: 0,
                   }}
                 >
-                  {theme === "dark" ? "☀️" : "🌙"}
+                  {theme === "dark" ? (
+                    <FiSun style={{ width: 15, height: 15, color: "#f59e0b" }} />
+                  ) : (
+                    <FiMoon style={{ width: 15, height: 15 }} />
+                  )}
                 </button>
               </div>
             </>
@@ -625,7 +666,11 @@ export default function AdminLayout({
                   flexShrink: 0,
                 }}
               >
-                {theme === "dark" ? "☀️" : "🌙"}
+                {theme === "dark" ? (
+                  <FiSun style={{ width: 15, height: 15, color: "#f59e0b" }} />
+                ) : (
+                  <FiMoon style={{ width: 15, height: 15 }} />
+                )}
               </button>
             </div>
           )}
@@ -686,14 +731,16 @@ export default function AdminLayout({
             >
               <div
                 style={{
-                  fontSize: 20,
                   filter: isActive ? "grayscale(0)" : "grayscale(1)",
                   opacity: isActive ? 1 : 0.6,
                   transform: isActive ? "translateY(-2px)" : "none",
                   transition: "all 0.2s",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                {item.icon}
+                <item.icon style={{ width: 20, height: 20 }} />
               </div>
               <span
                 style={{

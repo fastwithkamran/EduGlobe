@@ -14,14 +14,40 @@ import {
   timeAgo,
   TYPE_COLORS,
   TYPE_TEXTS,
-  TYPE_EMOJI,
   getInitials,
 } from "@/lib/postHelpers";
 import { sanitizeImageUrl } from "@/lib/utils";
 import { OpportunityCard } from "@/components/OpportunityCard";
 import { CommentThread } from "@/components/CommentThread";
 import { SocietyAboutDialog } from "./SocietyAboutDialog";
-import type { Post } from "@/types";
+import type { Post, PostType } from "@/types";
+import {
+  FiTrash2,
+  FiImage,
+  FiPaperclip,
+  FiHeart,
+  FiMessageCircle,
+  FiShare2,
+  FiCheck,
+  FiPlus,
+  FiCalendar,
+  FiCode,
+  FiBriefcase,
+  FiFileText,
+} from "react-icons/fi";
+import { FaHeart } from "react-icons/fa";
+import { HiOutlineAcademicCap, HiOutlineMegaphone } from "react-icons/hi2";
+
+const TYPE_ICONS: Record<
+  PostType,
+  React.ComponentType<{ className?: string; style?: React.CSSProperties }>
+> = {
+  announcement: HiOutlineMegaphone,
+  event: FiCalendar,
+  hackathon: FiCode,
+  scholarship: HiOutlineAcademicCap,
+  internship: FiBriefcase,
+};
 
 // ─── Confirm Delete Modal ──────────────────────────────────────────────────────
 
@@ -99,11 +125,10 @@ function ConfirmDeleteModal({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 22,
             margin: "0 auto 16px",
           }}
         >
-          🗑️
+          <FiTrash2 style={{ width: 24, height: 24, color: "#ef4444" }} />
         </div>
         <h2
           id="delete-post-title"
@@ -167,7 +192,13 @@ function ConfirmDeleteModal({
               fontFamily: "var(--font-body)",
             }}
           >
-            {loading ? "⏳ Deleting…" : "🗑️ Delete"}
+            {loading ? (
+              "Deleting…"
+            ) : (
+              <>
+                <FiTrash2 style={{ width: 14, height: 14 }} /> Delete
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -201,7 +232,7 @@ function ImageWithSkeleton({ src, alt }: { src: string; alt: string }) {
           fontSize: 12,
         }}
       >
-        🖼️ {alt || "Image"} (couldn’t load preview)
+        <FiImage style={{ width: 14, height: 14 }} /> {alt || "Image"} (couldn’t load preview)
       </a>
     );
   }
@@ -460,7 +491,7 @@ export function PostCard({
               e.currentTarget.style.transform = "scale(1)";
             }}
           >
-            🗑️
+            <FiTrash2 style={{ width: 14, height: 14 }} />
           </button>
         )}
 
@@ -548,18 +579,26 @@ export function PostCard({
                 }}
               >
                 <span>{timeAgo(post.createdAt)}</span>
-                <span
-                  style={{
-                    background: TYPE_COLORS[post.type],
-                    color: TYPE_TEXTS[post.type],
-                    padding: "1px 8px",
-                    borderRadius: 999,
-                    fontSize: 11,
-                    fontWeight: 500,
-                  }}
-                >
-                  {TYPE_EMOJI[post.type]} {typeLabel}
-                </span>
+                {(() => {
+                  const TypeIcon = TYPE_ICONS[post.type] ?? FiFileText;
+                  return (
+                    <span
+                      style={{
+                        background: TYPE_COLORS[post.type],
+                        color: TYPE_TEXTS[post.type],
+                        padding: "2px 8px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 500,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <TypeIcon style={{ width: 12, height: 12 }} /> {typeLabel}
+                    </span>
+                  );
+                })()}
               </div>
             </div>
           </div>
@@ -576,7 +615,15 @@ export function PostCard({
             }
             style={{ flexShrink: 0 }}
           >
-            {isFollowing ? "✓ Following" : "+ Follow"}
+            {isFollowing ? (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <FiCheck style={{ width: 12, height: 12 }} /> Following
+              </span>
+            ) : (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <FiPlus style={{ width: 12, height: 12 }} /> Follow
+              </span>
+            )}
           </button>
         </div>
 
@@ -635,7 +682,7 @@ export function PostCard({
                     whiteSpace: "nowrap",
                   }}
                 >
-                  📎 {att.fileName}
+                  <FiPaperclip style={{ width: 13, height: 13, flexShrink: 0 }} /> {att.fileName}
                 </a>
               ),
             )}
@@ -664,7 +711,12 @@ export function PostCard({
               transform: isLiked ? "scale(1.05)" : "scale(1)",
             }}
           >
-            <span aria-hidden="true">{isLiked ? "♥" : "♡"}</span> {likeCount}
+            {isLiked ? (
+              <FaHeart style={{ width: 14, height: 14, color: "#ef4444" }} />
+            ) : (
+              <FiHeart style={{ width: 14, height: 14 }} />
+            )}{" "}
+            {likeCount}
           </button>
           <button
             type="button"
@@ -679,7 +731,7 @@ export function PostCard({
                 : "var(--text-tertiary)",
             }}
           >
-            <span aria-hidden="true">💬</span> {commentCount}
+            <FiMessageCircle style={{ width: 14, height: 14 }} /> {commentCount}
           </button>
           <button
             type="button"
@@ -687,7 +739,7 @@ export function PostCard({
             className="btn-ghost"
             style={{ ...actionButtonStyle, color: "var(--text-tertiary)" }}
           >
-            ↗ Share
+            <FiShare2 style={{ width: 14, height: 14 }} /> Share
           </button>
         </div>
 
