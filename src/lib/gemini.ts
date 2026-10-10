@@ -20,9 +20,13 @@ if (!apiKey) {
 const genAI = apiKey ? new GoogleGenAI({ apiKey }) : null;
 
 let searchGroundingDisabledUntil = 0;
+// Statuses that mean "grounding isn't usable right now" (quota / not permitted).
+const SEARCH_COOLDOWN_STATUSES = new Set([429, 403]);
+const SEARCH_COOLDOWN_MS = 10 * 60 * 1000;
 
-export const AI_ERROR_MARKERS = [
+export const AI_ERROR_MARKERS: readonly string[] = [
   "I couldn't retrieve a response right now",
+  "I couldn't generate an answer for that",
   "Please try again shortly",
   "[Response interrupted",
   "[The response was interrupted",
@@ -77,22 +81,42 @@ export interface ChatMessage {
   content: string;
 }
 
+/**
+ * Remove the footers this service appends to its own answers (source list,
+ * "cut off" note). Sending them back as history wastes tokens and teaches the
+ * model to imitate them.
+ */
+function stripGeneratedFooters(text: string): string {
+  return text
+    .replace(/\n\n\*\*Sources:\*\*[\s\S]*$/, "")
+    .replace(/\n\n_The answer was cut off[^\n]*_\s*$/, "")
+    .trim();
+}
+
 /** Validate/clean client-supplied history before it reaches the model. */
 function buildContents(history: ChatMessage[], userMessage: string) {
   const cleaned = (Array.isArray(history) ? history : [])
-    .filter(
-      (m) =>
-        m &&
-        (m.role === "user" || m.role === "assistant") &&
-        typeof m.content === "string" &&
-        m.content.trim().length > 0 &&
-        !isErrorMessage(m.content),
-    )
-    .slice(-MAX_HISTORY_MESSAGES)
-    .map((m) => ({
-      role: m.role === "assistant" ? ("model" as const) : ("user" as const),
-      parts: [{ text: m.content.slice(0, MAX_MESSAGE_CHARS) }],
-    }));
+    .flatMap((m) => {
+      if (
+        !m ||
+        (m.role !== "user" && m.role !== "assistant") ||
+        typeof m.content !== "string" ||
+        isErrorMessage(m.content)
+      ) {
+        return [];
+      }
+      const text = (
+        m.role === "assistant" ? stripGeneratedFooters(m.content) : m.content
+      ).trim();
+      if (!text) return [];
+      return [
+        {
+          role: m.role === "assistant" ? ("model" as const) : ("user" as const),
+          parts: [{ text: text.slice(0, MAX_MESSAGE_CHARS) }],
+        },
+      ];
+    })
+    .slice(-MAX_HISTORY_MESSAGES);
 
   // Gemini expects the conversation to open with a user turn.
   while (cleaned.length > 0 && cleaned[0]!.role !== "user") cleaned.shift();
@@ -127,9 +151,24 @@ function buildContents(history: ChatMessage[], userMessage: string) {
   ];
 }
 
+const getStatus = (err: unknown): number | undefined =>
+  (err as { status?: number } | null)?.status;
+
+/** Make a URL safe inside a markdown link: ")" would end the link early. */
+const markdownSafeUrl = (url: string) =>
+  url.replace(/\(/g, "%28").replace(/\)/g, "%29");
+
+/** The chat renderer has no escape support, so strip characters that break link labels. */
+const markdownSafeLabel = (title: string) =>
+  title.replace(/[[\]\\\r\n]+/g, " ").trim() || "Source";
+
 /**
  * Stream a search-grounded Gemini response (with ungrounded fallback) and
  * append links to sources if search grounding is available and active.
+ *
+ * Fallback to the ungrounded call happens when grounded generation fails to
+ * start, fails before producing any text, or finishes with an empty answer.
+ * Once text has been streamed we can't retry, so failures are reported inline.
  *
  * Pass the request's `signal` (req.signal in a route handler) so generation
  * stops — and stops billing — when the user closes the tab.
@@ -143,33 +182,38 @@ export async function* generateAIStream(
     yield "The AI assistant is unavailable because its server API key is not configured.";
     return;
   }
+  const ai = genAI;
 
   if (typeof userMessage !== "string" || !userMessage.trim()) {
     yield "Please type a question first.";
     return;
   }
 
-  const sources = new Map<string, string>();
   const contents = buildContents(conversationHistory, userMessage.trim());
-  let emitted = false;
-  let finishReason = "";
-
-  const now = Date.now();
-  const shouldTrySearch =
-    now >= searchGroundingDisabledUntil &&
+  const searchAllowed =
+    Date.now() >= searchGroundingDisabledUntil &&
     process.env.GEMINI_DISABLE_SEARCH_GROUNDING !== "true";
+  const attempts: boolean[] = searchAllowed ? [true, false] : [false];
 
-  let stream: Awaited<ReturnType<typeof genAI.models.generateContentStream>> | null = null;
-  let usedSearch = false;
+  let emitted = false;
+  let lastStatus: number | undefined;
 
-  if (shouldTrySearch) {
+  for (let a = 0; a < attempts.length; a++) {
+    const withSearch = attempts[a]!;
+    const hasFallback = a < attempts.length - 1;
+    if (signal?.aborted) return;
+
+    const sources = new Map<string, string>();
+    let finishReason = "";
+    let blockReason = "";
+
     try {
-      stream = await genAI.models.generateContentStream({
+      const stream = await ai.models.generateContentStream({
         model: MODEL,
         contents,
         config: {
-          systemInstruction: getSystemPrompt(true),
-          tools: [{ googleSearch: {} }],
+          systemInstruction: getSystemPrompt(withSearch),
+          ...(withSearch ? { tools: [{ googleSearch: {} }] } : {}),
           temperature: 0.2,
           topP: 0.9,
           // Thinking tokens count toward this cap; long opportunity lists with
@@ -178,58 +222,24 @@ export async function* generateAIStream(
           abortSignal: signal,
         },
       });
-      usedSearch = true;
-    } catch (searchError) {
-      if (signal?.aborted) return;
-      const status = (searchError as { status?: number })?.status;
-      // When search grounding hits quota/free-tier limitation (429), cool down
-      // search for 10 minutes so subsequent requests don't suffer latency penalties.
-      if (status === 429) {
-        searchGroundingDisabledUntil = Date.now() + 10 * 60 * 1000;
-      }
-      console.warn(
-        `[Gemini] Grounded generation failed (status: ${status ?? "unknown"}). Falling back to ungrounded generation.`,
-      );
-    }
-  }
 
-  if (!stream) {
-    try {
-      stream = await genAI.models.generateContentStream({
-        model: MODEL,
-        contents,
-        config: {
-          systemInstruction: getSystemPrompt(false),
-          temperature: 0.2,
-          topP: 0.9,
-          maxOutputTokens: 8192,
-          abortSignal: signal,
-        },
-      });
-    } catch (fallbackError) {
-      if (signal?.aborted) return;
-      console.error("[Gemini] Fallback generation error:", fallbackError);
-      const status = (fallbackError as { status?: number })?.status;
-      if (status === 429) {
-        yield "\n\nThe AI assistant is temporarily receiving high traffic. Please wait a minute and try again.";
-      } else {
-        yield "\n\nI couldn't retrieve a response right now. Please try again shortly.";
-      }
-      return;
-    }
-  }
+      for await (const chunk of stream) {
+        const text = chunk.text;
+        if (text) {
+          emitted = true;
+          yield text;
+        }
 
-  try {
-    for await (const chunk of stream) {
-      const text = chunk.text;
-      if (text) {
-        emitted = true;
-        yield text;
-      }
+        if (chunk.promptFeedback?.blockReason) {
+          blockReason = String(chunk.promptFeedback.blockReason);
+        }
 
-      if (usedSearch) {
         for (const candidate of chunk.candidates ?? []) {
-          if (candidate.finishReason) finishReason = String(candidate.finishReason);
+          if (candidate.finishReason) {
+            finishReason = String(candidate.finishReason);
+          }
+          if (!withSearch) continue;
+
           for (const groundingChunk of candidate.groundingMetadata
             ?.groundingChunks ?? []) {
             const webSource = groundingChunk.web;
@@ -245,48 +255,69 @@ export async function* generateAIStream(
             }
           }
         }
-      } else {
-        for (const candidate of chunk.candidates ?? []) {
-          if (candidate.finishReason) finishReason = String(candidate.finishReason);
+      }
+
+      if (!emitted) {
+        if (blockReason || /SAFETY|PROHIBITED|BLOCKLIST|SPII/.test(finishReason)) {
+          yield "I can't help with that request. Try asking about scholarships, internships, events or other student opportunities.";
+          return;
         }
+        // Grounded calls occasionally come back empty; try once without search.
+        if (hasFallback) continue;
+        yield "I couldn't generate an answer for that. Try rephrasing your question.";
+        return;
+      }
+
+      if (finishReason === "MAX_TOKENS") {
+        yield "\n\n_The answer was cut off because it was too long. Ask me to continue, or narrow your question._";
+      }
+
+      if (sources.size > 0) {
+        // Grounding titles are just the site's domain, so several pages from one
+        // site would show up as identical rows — keep one entry per title.
+        const seenTitles = new Set<string>();
+        const uniqueSources = [...sources].filter(([, title]) => {
+          const key = title.toLowerCase();
+          if (seenTitles.has(key)) return false;
+          seenTitles.add(key);
+          return true;
+        });
+        const sourceList = uniqueSources
+          .slice(0, MAX_SOURCES)
+          .map(
+            ([url, title]) =>
+              `- [${markdownSafeLabel(title)}](${markdownSafeUrl(url)})`,
+          );
+        yield `\n\n**Sources:**\n${sourceList.join("\n")}`;
+      }
+      return;
+    } catch (err) {
+      if (signal?.aborted) return;
+      lastStatus = getStatus(err);
+
+      if (emitted) {
+        // Partial answer already sent — can't restart without duplicating text.
+        console.error("[Gemini] Stream reading error:", err);
+        yield "\n\n_[The response was interrupted.]_";
+        return;
+      }
+
+      if (withSearch) {
+        // Quota / permission problems with grounding: skip it for a while so
+        // later requests don't pay for a doomed first attempt.
+        if (lastStatus !== undefined && SEARCH_COOLDOWN_STATUSES.has(lastStatus)) {
+          searchGroundingDisabledUntil = Date.now() + SEARCH_COOLDOWN_MS;
+        }
+        console.warn(
+          `[Gemini] Grounded generation failed (status: ${lastStatus ?? "unknown"}). Falling back to ungrounded generation.`,
+        );
+      } else {
+        console.error("[Gemini] Generation error:", err);
       }
     }
-
-    if (!emitted) {
-      yield /SAFETY|PROHIBITED|BLOCKLIST|SPII/.test(finishReason)
-        ? "I can't help with that request. Try asking about scholarships, internships, events or other student opportunities."
-        : "I couldn't generate an answer for that. Try rephrasing your question.";
-      return;
-    }
-
-    if (finishReason === "MAX_TOKENS") {
-      yield "\n\n_The answer was cut off because it was too long. Ask me to continue, or narrow your question._";
-    }
-
-    if (sources.size > 0) {
-      // Grounding titles are just the site's domain, so several pages from one
-      // site would show up as identical rows — keep one entry per title.
-      const seenTitles = new Set<string>();
-      const uniqueSources = [...sources].filter(([, title]) => {
-        const key = title.toLowerCase();
-        if (seenTitles.has(key)) return false;
-        seenTitles.add(key);
-        return true;
-      });
-      const sourceList = uniqueSources
-        .slice(0, MAX_SOURCES)
-        .map(
-          ([url, title]) => `- [${title.replace(/[[\]\\]/g, "\\$&")}](${url})`,
-        );
-      yield `\n\n**Sources:**\n${sourceList.join("\n")}`;
-    }
-  } catch (streamError) {
-    if (signal?.aborted) return;
-    console.error("[Gemini] Stream reading error:", streamError);
-    if (!emitted) {
-      yield "\n\nI couldn't retrieve a response right now. Please try again shortly.";
-    } else {
-      yield "\n\n_[The response was interrupted.]_";
-    }
   }
+
+  yield lastStatus === 429
+    ? "\n\nThe AI assistant is temporarily receiving high traffic. Please wait a minute and try again."
+    : "\n\nI couldn't retrieve a response right now. Please try again shortly.";
 }
