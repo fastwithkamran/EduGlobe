@@ -60,7 +60,7 @@ function applyTheme(theme: AppTheme) {
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState<AppTheme>("dark");
+  const [theme, setThemeState] = useState<AppTheme>("light");
 
   useEffect(() => {
     const sync = (next: AppTheme) => {
@@ -74,7 +74,7 @@ export function useTheme() {
     // Other tabs. key === null means storage was cleared.
     const onStorage = (event: StorageEvent) => {
       if (event.key !== null && event.key !== THEME_STORAGE_KEY) return;
-      sync(readStoredTheme() ?? "dark");
+      sync(readStoredTheme() ?? "light");
     };
 
     // FIX: same-tab changes carry the theme in the event. Re-reading storage

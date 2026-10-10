@@ -94,10 +94,9 @@ export const viewport: Viewport = {
   initialScale: 1,
   // Required for env(safe-area-inset-*) on notched iPhones (mobile bottom nav).
   viewportFit: "cover",
-  colorScheme: "dark light",
-  // The app defaults to dark and only goes light via the stored toggle, so
-  // keep the browser chrome dark by default.
-  themeColor: "#060b18",
+  colorScheme: "light dark",
+  // The app defaults to light and only goes dark via the stored toggle.
+  themeColor: "#f0f4f8",
 };
 
 const toastBase: CSSProperties = {
@@ -127,12 +126,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     // suppressHydrationWarning: the inline script sets data-theme on <html>
     // before React hydrates.
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" data-theme="light" suppressHydrationWarning>
       <head>
-        {/* Anti-FOUC: read theme from localStorage before first paint */}
+        {/* Anti-FOUC: read theme from localStorage before first paint; defaults to light */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('opportune-theme');if(t==='light')document.documentElement.dataset.theme='light';}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('opportune-theme');if(t==='dark'){delete document.documentElement.dataset.theme;}else{document.documentElement.dataset.theme='light';}}catch(e){}})();`,
           }}
         />
       </head>
