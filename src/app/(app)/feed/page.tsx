@@ -25,7 +25,6 @@ import {
   FiCalendar,
 } from "react-icons/fi";
 import {
-  HiOutlineSparkles,
   HiOutlineAcademicCap,
   HiOutlineMegaphone,
 } from "react-icons/hi2";
@@ -39,9 +38,9 @@ type FeedTab = "all" | "following";
 const TYPE_FILTERS: Array<{
   value: PostType | "all";
   label: string;
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  icon?: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
 }> = [
-  { value: "all", label: "All", icon: HiOutlineSparkles },
+  { value: "all", label: "All" },
   { value: "hackathon", label: "Hackathons", icon: FiCode },
   { value: "scholarship", label: "Scholarships", icon: HiOutlineAcademicCap },
   { value: "internship", label: "Internships", icon: FiBriefcase },
@@ -501,7 +500,7 @@ export default function GlobalFeedPage() {
                   transition: "all .15s",
                 }}
               >
-                <FilterIcon style={{ width: 13, height: 13 }} />
+                {FilterIcon && <FilterIcon style={{ width: 13, height: 13 }} />}
                 <span>{label}</span>
               </button>
             );
