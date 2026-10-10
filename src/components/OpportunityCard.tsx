@@ -40,12 +40,12 @@ function MetadataItem({
   color?: string;
 }) {
   return (
-    <div className="flex min-w-0 items-center gap-1.5">
+    <div className="flex min-w-0 max-w-full items-center gap-1.5">
       <span aria-hidden="true" className="shrink-0 text-[13px] flex items-center">
         {icon}
       </span>
       <span
-        className="break-words text-xs"
+        className="min-w-0 break-words text-xs leading-normal"
         style={{
           color: color ?? "var(--text-secondary)",
           fontWeight: emphasized ? 700 : 400,
@@ -79,10 +79,10 @@ export function OpportunityCard({
   return (
     <section
       aria-label={`${type.charAt(0).toUpperCase()}${type.slice(1)} details`}
-      className="mt-3 flex flex-col gap-2.5 rounded-xl px-3.5 py-3.5 sm:px-4"
+      className="mt-3 flex w-full min-w-0 flex-col gap-3 rounded-2xl p-4 sm:p-5"
       style={{
         background: TYPE_COLORS[type],
-        border: `1px solid ${color}30`,
+        border: `1px solid ${color}35`,
       }}
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -139,13 +139,13 @@ export function OpportunityCard({
 
       {skills.length > 0 && (
         <ul
-          className="m-0 flex list-none flex-wrap gap-1.5 p-0"
+          className="m-0 flex list-none flex-wrap gap-2 p-0"
           aria-label={type === "event" ? "Topics" : "Skills and topics"}
         >
           {skills.map((skill, index) => (
             <li
               key={`${skill}-${index}`}
-              className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+              className="rounded-full px-3 py-1 text-[11px] sm:text-xs font-medium leading-normal break-words"
               style={{
                 background: `${color}18`,
                 color,
@@ -170,7 +170,7 @@ export function OpportunityCard({
           href={applyLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex min-h-9 self-start items-center gap-1.5 rounded-lg px-4 py-2 text-[13px] font-bold transition-opacity hover:opacity-90 shadow-sm"
+          className="mt-1 inline-flex min-h-9 self-start items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-bold shadow-sm transition-opacity hover:opacity-90"
           style={{ background: color, color: "#ffffff" }}
         >
           <FiExternalLink className="w-4 h-4" /> {actionLabel}

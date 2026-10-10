@@ -382,8 +382,7 @@ export function SocietyPostCard({
                   src={href}
                   alt={att.fileName}
                   fill
-                  sizes="240px"
-                  className="object-cover"
+                  className="object-contain"
                 />
               </a>
             ) : (
