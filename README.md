@@ -144,7 +144,6 @@ Opportune/
 │   └── workflows/
 │       └── ci.yml
 ├── public/
-│   ├── logo.png
 │   ├── logo_bg.png
 │   └── animations/
 │       └── loading.json
