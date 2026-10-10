@@ -15,6 +15,7 @@ const FIELD_CONFIG: Record<
   }>
 > = {
   event: [
+    { field: "deadline", label: "Registration deadline", type: "date" },
     { field: "startDate", label: "Start date", type: "date" },
     { field: "endDate", label: "End date", type: "date" },
     {
