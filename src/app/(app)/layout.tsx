@@ -262,7 +262,7 @@ export default function AdminLayout({
             {theme === "dark" ? (
               <FiSun className="w-4 h-4 text-amber-400" />
             ) : (
-              <FiMoon className="w-4 h-4 text-slate-300" />
+              <FiMoon className="w-4 h-4 text-black" />
             )}
           </button>
           {!user && (
