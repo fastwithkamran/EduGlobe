@@ -603,7 +603,9 @@ export default function SettingsPage() {
               border: "1px solid var(--border-primary)",
               cursor: "pointer",
               background:
-                theme === "dark" ? "var(--gradient-primary)" : "var(--bg-tertiary)",
+                theme === "dark"
+                  ? "var(--gradient-primary)"
+                  : "var(--bg-tertiary)",
               position: "relative",
               transition: "background .25s",
               flexShrink: 0,

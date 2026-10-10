@@ -124,9 +124,7 @@ function renderInline(
             fontSize: "0.9em",
             padding: "1px 5px",
             borderRadius: 4,
-            background: isUser
-              ? "rgba(0,0,0,0.25)"
-              : "var(--bg-tertiary)",
+            background: isUser ? "rgba(0,0,0,0.25)" : "var(--bg-tertiary)",
             overflowWrap: "anywhere",
           }}
         >

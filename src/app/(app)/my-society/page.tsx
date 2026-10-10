@@ -130,8 +130,7 @@ export default function MySocietyPage() {
     );
   }
 
-  // A signed-out visitor used to see "Create a Society".
-  // FIX: ...and the replacement message was a dead end with no way to sign in.
+  // Prompt sign-in for unauthenticated visitors
   if (!user) {
     return (
       <main
@@ -145,7 +144,8 @@ export default function MySocietyPage() {
               className="mb-1 text-[22px] font-extrabold flex items-center gap-2"
               style={{ fontFamily: "var(--font-heading)" }}
             >
-              <HiOutlineBuildingLibrary className="w-6 h-6 text-[var(--primary-400)]" /> Society
+              <HiOutlineBuildingLibrary className="w-6 h-6 text-[var(--primary-400)]" />{" "}
+              Society
             </h1>
             <p
               className="m-0 text-[13px] text-[var(--text-tertiary)]"
@@ -170,7 +170,8 @@ export default function MySocietyPage() {
               You’re signed out
             </h2>
             <p className="mx-auto mb-4 max-w-md text-[13px] text-[var(--text-tertiary)]">
-              Sign in to view updates from your society and manage your community.
+              Sign in to view updates from your society and manage your
+              community.
             </p>
             <button
               type="button"
@@ -178,10 +179,15 @@ export default function MySocietyPage() {
               onClick={() =>
                 loginWithGoogle().catch((error: unknown) => {
                   const code =
-                    typeof error === "object" && error !== null && "code" in error
+                    typeof error === "object" &&
+                    error !== null &&
+                    "code" in error
                       ? String((error as { code: unknown }).code)
                       : "";
-                  if (code.includes("popup-closed") || code.includes("cancelled"))
+                  if (
+                    code.includes("popup-closed") ||
+                    code.includes("cancelled")
+                  )
                     return;
                   console.error("[MySocietyPage] Sign-in failed:", error);
                   toast.error("Unable to sign in. Please try again.");
@@ -242,8 +248,7 @@ export default function MySocietyPage() {
 
   if (!society) return <NoSocietyState missingSociety />;
 
-  // FIX: tabs had role="tab" but no keyboard support. Implement the standard
-  // roving-tabindex pattern (Arrow keys / Home / End).
+  // Keyboard navigation for tablist (Arrow keys / Home / End)
   const handleTabKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     const index = TABS.findIndex((item) => item.id === tab);
     let next = index;
@@ -289,7 +294,9 @@ export default function MySocietyPage() {
         color: "var(--text-tertiary)",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+      <div
+        style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}
+      >
         <div
           style={{
             width: 48,
@@ -355,8 +362,6 @@ export default function MySocietyPage() {
     <div
       style={{
         flex: 1,
-        // FIX: without minHeight:0 a flex child can't shrink below its content,
-        // which breaks scrolling inside the app shell.
         minHeight: 0,
         display: "flex",
         flexDirection: "column",
@@ -415,9 +420,7 @@ export default function MySocietyPage() {
         </div>
       </div>
 
-      {/* FIX: both panels stay mounted and the inactive one is just hidden.
-          Previously switching to "About" unmounted PostComposer and silently
-          threw away the admin's unsent draft, attachments and upload state. */}
+      {/* Keep both panels mounted so draft state persists between tab switches */}
       <div
         id="society-panel-feed"
         role="tabpanel"

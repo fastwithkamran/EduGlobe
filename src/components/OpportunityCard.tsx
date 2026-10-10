@@ -6,7 +6,10 @@ import {
   FiGlobe,
   FiExternalLink,
 } from "react-icons/fi";
-import { HiOutlineAcademicCap, HiOutlineBuildingLibrary } from "react-icons/hi2";
+import {
+  HiOutlineAcademicCap,
+  HiOutlineBuildingLibrary,
+} from "react-icons/hi2";
 import {
   daysUntil,
   formatOpportunityDate,
@@ -16,30 +19,55 @@ import {
 } from "@/lib/postHelpers";
 import type { OpportunityMeta, PostType } from "@/types";
 
-// Colours come from theme tokens (see globals.css) for sharp contrast on light & dark themes.
+/**
+ * Visual badge and urgency styling for opportunity deadlines.
+ */
 function getDeadlinePresentation(deadline?: string) {
   const days = daysUntil(deadline);
   if (days === null) {
-    return { color: "var(--text-muted, #475569)", label: "Deadline", closed: false };
+    return {
+      color: "var(--text-muted, #475569)",
+      label: "Deadline",
+      closed: false,
+    };
   }
   if (days < 0) {
-    return { color: "var(--text-muted, #475569)", label: "Deadline passed", closed: true };
+    return {
+      color: "var(--text-muted, #475569)",
+      label: "Deadline passed",
+      closed: true,
+    };
   }
   if (days === 0) {
-    return { color: "var(--danger-text, #b91c1c)", label: "Deadline today", closed: false };
+    return {
+      color: "var(--danger-text, #b91c1c)",
+      label: "Deadline today",
+      closed: false,
+    };
   }
   if (days <= 3) {
-    return { color: "var(--danger-text, #b91c1c)", label: `${days}d left`, closed: false };
+    return {
+      color: "var(--danger-text, #b91c1c)",
+      label: `${days}d left`,
+      closed: false,
+    };
   }
   if (days <= 7) {
-    return { color: "var(--warning-text, #c2410c)", label: `${days}d left`, closed: false };
+    return {
+      color: "var(--warning-text, #c2410c)",
+      label: `${days}d left`,
+      closed: false,
+    };
   }
-  return { color: "var(--success-text, #047857)", label: `${days}d left`, closed: false };
+  return {
+    color: "var(--success-text, #047857)",
+    label: `${days}d left`,
+    closed: false,
+  };
 }
 
 /**
- * Older documents may store skills as a comma-separated string, which used to
- * crash the whole feed (`.map is not a function`). Also de-dupes case-insensitively.
+ * Normalizes raw skills input from an array or comma-separated string into unique, trimmed values.
  */
 function normalizeSkills(raw: unknown): string[] {
   const list = Array.isArray(raw)
@@ -60,6 +88,9 @@ function normalizeSkills(raw: unknown): string[] {
   return out;
 }
 
+/**
+ * Individual opportunity metadata row item (icon + label) with theme-aware contrast.
+ */
 function MetadataItem({
   icon,
   children,
@@ -72,13 +103,14 @@ function MetadataItem({
   color?: string;
 }) {
   return (
-    // The colour is set on the wrapper so the icon matches its text
-    // Defaults to var(--text-primary) for dark, high-contrast readability on pastel cards.
     <div
       className="flex min-w-0 max-w-full items-center gap-1.5"
       style={{ color: color ?? "var(--text-primary, #0f172a)" }}
     >
-      <span aria-hidden="true" className="shrink-0 text-[13px] flex items-center opacity-85">
+      <span
+        aria-hidden="true"
+        className="shrink-0 text-[13px] flex items-center opacity-85"
+      >
         {icon}
       </span>
       <span
@@ -91,6 +123,9 @@ function MetadataItem({
   );
 }
 
+/**
+ * Embedded card displaying structured opportunity metadata (deadlines, dates, prize, location, topics, and apply action).
+ */
 export function OpportunityCard({
   meta,
   type,
@@ -108,9 +143,9 @@ export function OpportunityCard({
   const color = TYPE_TEXTS[type];
   const showCountry =
     !!meta.country &&
-    meta.country.trim().toLowerCase() !== (meta.location ?? "").trim().toLowerCase();
+    meta.country.trim().toLowerCase() !==
+      (meta.location ?? "").trim().toLowerCase();
 
-  // Once the deadline has passed, don't keep shouting "Apply now".
   const actionLabel = deadlinePresentation.closed
     ? "View details"
     : type === "event" || type === "hackathon"
@@ -172,7 +207,9 @@ export function OpportunityCard({
           </MetadataItem>
         )}
         {meta.organizer && (
-          <MetadataItem icon={<HiOutlineBuildingLibrary className="w-3.5 h-3.5" />}>
+          <MetadataItem
+            icon={<HiOutlineBuildingLibrary className="w-3.5 h-3.5" />}
+          >
             {meta.organizer}
           </MetadataItem>
         )}
@@ -207,8 +244,6 @@ export function OpportunityCard({
       )}
 
       {applyLink && (
-        // Uses the design-system button: the old inline `white text on
-        // TYPE_TEXTS[type]` was unreadable whenever that colour was a light pastel.
         <a
           href={applyLink}
           target="_blank"
@@ -217,7 +252,8 @@ export function OpportunityCard({
             deadlinePresentation.closed ? "btn-outline" : "btn-primary"
           }`}
         >
-          <FiExternalLink className="w-4 h-4" aria-hidden="true" /> {actionLabel}
+          <FiExternalLink className="w-4 h-4" aria-hidden="true" />{" "}
+          {actionLabel}
         </a>
       )}
     </section>

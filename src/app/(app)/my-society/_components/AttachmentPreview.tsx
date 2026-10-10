@@ -3,6 +3,9 @@
 import Image from "next/image";
 import { FiPaperclip, FiX } from "react-icons/fi";
 
+/**
+ * Compact preview chip for uploaded files/images during post composition.
+ */
 export function AttachmentPreview({
   file,
   previewUrl,
@@ -30,9 +33,6 @@ export function AttachmentPreview({
       }}
     >
       {isImage && previewUrl ? (
-        // FIX: previewUrl is a local blob: URL created by URL.createObjectURL,
-        // so it must not go through sanitizeImageUrl (which targets remote
-        // URLs and can swap blob: URLs for a fallback, breaking the preview).
         <Image
           src={previewUrl}
           alt={`${file.name} preview`}
@@ -57,7 +57,8 @@ export function AttachmentPreview({
             fontSize: 11,
           }}
         >
-          <FiPaperclip style={{ width: 12, height: 12, flexShrink: 0 }} /> {file.name}
+          <FiPaperclip style={{ width: 12, height: 12, flexShrink: 0 }} />{" "}
+          {file.name}
         </span>
       )}
       <button

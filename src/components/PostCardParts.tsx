@@ -13,11 +13,7 @@ import {
   FiFileText,
 } from "react-icons/fi";
 import { HiOutlineAcademicCap, HiOutlineMegaphone } from "react-icons/hi2";
-import {
-  POST_TYPE_OPTIONS,
-  TYPE_COLORS,
-  TYPE_TEXTS,
-} from "@/lib/postHelpers";
+import { POST_TYPE_OPTIONS, TYPE_COLORS, TYPE_TEXTS } from "@/lib/postHelpers";
 import { sanitizeImageUrl } from "@/lib/utils";
 import type { OpportunityMeta, Post, PostType } from "@/types";
 
@@ -49,7 +45,11 @@ export function truncateChars(text: string, max: number): string {
 export function hasOpportunityMeta(meta?: OpportunityMeta | null): boolean {
   if (!meta) return false;
   return Object.values(meta).some((v) =>
-    Array.isArray(v) ? v.length > 0 : typeof v === "string" ? v.trim() !== "" : v != null,
+    Array.isArray(v)
+      ? v.length > 0
+      : typeof v === "string"
+        ? v.trim() !== ""
+        : v != null,
   );
 }
 
@@ -157,8 +157,6 @@ export function ConfirmDeleteModal({
         inset: 0,
         background: "rgba(0,0,0,0.7)",
         backdropFilter: "blur(4px)",
-        // FIX: was 9999, which sat ABOVE the toaster (z 300), so the
-        // "Failed to delete" toast rendered underneath the backdrop.
         zIndex: "var(--z-modal)",
         display: "flex",
         alignItems: "center",
@@ -196,7 +194,9 @@ export function ConfirmDeleteModal({
             margin: "0 auto 16px",
           }}
         >
-          <FiTrash2 style={{ width: 24, height: 24, color: "var(--danger-text)" }} />
+          <FiTrash2
+            style={{ width: 24, height: 24, color: "var(--danger-text)" }}
+          />
         </div>
         <h2
           id="delete-post-title"
@@ -247,7 +247,10 @@ export function ConfirmDeleteModal({
               "Deleting…"
             ) : (
               <>
-                <FiTrash2 style={{ width: 14, height: 14 }} aria-hidden="true" />{" "}
+                <FiTrash2
+                  style={{ width: 14, height: 14 }}
+                  aria-hidden="true"
+                />{" "}
                 Delete post
               </>
             )}
@@ -266,8 +269,7 @@ export function ImageWithSkeleton({ src, alt }: { src: string; alt: string }) {
   const [failed, setFailed] = useState(false);
   const imgRef = useRef<HTMLImageElement>(null);
 
-  // FIX: an image that finishes loading (e.g. from cache) before React
-  // hydrates never fires onLoad, so it stayed at opacity 0 forever.
+  // Handle images already cached by browser before hydration
   useEffect(() => {
     const img = imgRef.current;
     if (img?.complete) {
@@ -356,15 +358,13 @@ export function ImageWithSkeleton({ src, alt }: { src: string; alt: string }) {
 
 type Attachment = NonNullable<Post["attachments"]>[number];
 
-export function AttachmentList({
-  attachments,
-}: {
-  attachments: Attachment[];
-}) {
+export function AttachmentList({ attachments }: { attachments: Attachment[] }) {
   const items: { att: Attachment; href: string; isImage: boolean }[] = [];
   for (const att of attachments) {
     const isImage = !!att.fileType?.startsWith("image/");
-    const href = isImage ? sanitizeImageUrl(att.fileURL) : safeHref(att.fileURL);
+    const href = isImage
+      ? sanitizeImageUrl(att.fileURL)
+      : safeHref(att.fileURL);
     // A missing/invalid URL used to reach next/image (which throws on an
     // empty src) and take down the whole feed.
     if (href) items.push({ att, href, isImage });

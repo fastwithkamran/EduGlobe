@@ -94,7 +94,9 @@ export function DeleteAccountModal({
             margin: "0 auto 18px",
           }}
         >
-          <FiAlertTriangle style={{ width: 24, height: 24, color: "#ef4444" }} />
+          <FiAlertTriangle
+            style={{ width: 24, height: 24, color: "#ef4444" }}
+          />
         </div>
         <h2
           id="delete-account-title"
@@ -139,8 +141,13 @@ export function DeleteAccountModal({
             gap: 8,
           }}
         >
-          <FiKey style={{ width: 16, height: 16, color: "#3b82f6", flexShrink: 0 }} />
-          <span>A Google sign-in popup will appear to verify your identity before deletion.</span>
+          <FiKey
+            style={{ width: 16, height: 16, color: "#3b82f6", flexShrink: 0 }}
+          />
+          <span>
+            A Google sign-in popup will appear to verify your identity before
+            deletion.
+          </span>
         </div>
 
         <div style={{ marginBottom: 20 }}>

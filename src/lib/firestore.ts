@@ -381,7 +381,8 @@ export async function createSociety(
 ): Promise<string> {
   const userRef = doc(db, "users", creator.uid);
   const userSnap = await getDoc(userRef);
-  const currentRole = (userSnap.data()?.role as string | null | undefined) ?? null;
+  const currentRole =
+    (userSnap.data()?.role as string | null | undefined) ?? null;
   if (currentRole !== null && currentRole !== "super_admin") {
     throw new Error("You already manage a society.");
   }

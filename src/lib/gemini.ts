@@ -127,7 +127,9 @@ function buildContents(history: ChatMessage[], userMessage: string) {
   for (const turn of cleaned) {
     const last = merged[merged.length - 1];
     if (last && last.role === turn.role) {
-      last.parts = [{ text: `${last.parts[0]!.text}\n\n${turn.parts[0]!.text}` }];
+      last.parts = [
+        { text: `${last.parts[0]!.text}\n\n${turn.parts[0]!.text}` },
+      ];
     } else {
       merged.push({ role: turn.role, parts: [...turn.parts] });
     }
@@ -258,7 +260,10 @@ export async function* generateAIStream(
       }
 
       if (!emitted) {
-        if (blockReason || /SAFETY|PROHIBITED|BLOCKLIST|SPII/.test(finishReason)) {
+        if (
+          blockReason ||
+          /SAFETY|PROHIBITED|BLOCKLIST|SPII/.test(finishReason)
+        ) {
           yield "I can't help with that request. Try asking about scholarships, internships, events or other student opportunities.";
           return;
         }
@@ -305,7 +310,10 @@ export async function* generateAIStream(
       if (withSearch) {
         // Quota / permission problems with grounding: skip it for a while so
         // later requests don't pay for a doomed first attempt.
-        if (lastStatus !== undefined && SEARCH_COOLDOWN_STATUSES.has(lastStatus)) {
+        if (
+          lastStatus !== undefined &&
+          SEARCH_COOLDOWN_STATUSES.has(lastStatus)
+        ) {
           searchGroundingDisabledUntil = Date.now() + SEARCH_COOLDOWN_MS;
         }
         console.warn(

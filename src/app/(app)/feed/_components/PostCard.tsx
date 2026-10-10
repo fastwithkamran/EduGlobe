@@ -42,6 +42,9 @@ const actionButtonStyle: React.CSSProperties = {
   transition: "all .15s",
 };
 
+/**
+ * Feed card representing an individual society post with likes, comments, and opportunity metadata.
+ */
 export function PostCard({
   post,
   currentUserId,
@@ -62,7 +65,7 @@ export function PostCard({
   const [followPending, setFollowPending] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
-  // Defensive defaults: older Firestore docs may be missing these fields
+  // Fallbacks for optional post properties
   const attachments = post.attachments ?? [];
   const content = post.content ?? "";
   const commentCount = Math.max(post.commentCount ?? 0, 0);
@@ -88,7 +91,7 @@ export function PostCard({
       toast.error("Sign in to follow societies");
       return;
     }
-    if (followPending) return; // double-click used to follow then unfollow
+    if (followPending) return;
     setFollowPending(true);
     try {
       if (isFollowing) {
@@ -110,24 +113,22 @@ export function PostCard({
 
   const handleShare = async () => {
     const url = `${window.location.origin}${window.location.pathname}#post-${post.id}`;
-    // FIX: slice(0, 100) could cut an emoji in half and share a broken character.
-    const text = `${post.societyName}: ${truncateChars(content, 100)}`;
+    const text = `${truncateChars(content, 100)}`;
 
     if (navigator.share) {
       try {
         await navigator.share({ title: post.societyName, text, url });
         return;
       } catch (error) {
-        // User dismissed the share sheet: nothing to do
-        if (error instanceof DOMException && error.name === "AbortError") return;
-        // Any other failure: fall through to clipboard
+        if (error instanceof DOMException && error.name === "AbortError")
+          return;
       }
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link copied");
+      toast.success("Link copied!");
     } catch {
-      toast.error("Couldn’t copy the link");
+      toast.error("Could not copy link");
     }
   };
 
@@ -218,7 +219,7 @@ export function PostCard({
                 cursor: "pointer",
               }}
             >
-              {/* FIX: an empty sanitized URL used to reach next/image, which throws */}
+              {/* Society logo avatar */}
               {logoSrc && !logoFailed ? (
                 <Image
                   src={logoSrc}
@@ -360,7 +361,8 @@ export function PostCard({
             className="btn-ghost"
             style={{ ...actionButtonStyle, color: "var(--text-tertiary)" }}
           >
-            <FiShare2 style={{ width: 14, height: 14 }} aria-hidden="true" /> Share
+            <FiShare2 style={{ width: 14, height: 14 }} aria-hidden="true" />{" "}
+            Share
           </button>
         </div>
 

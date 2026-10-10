@@ -16,7 +16,10 @@ import { FiExternalLink } from "react-icons/fi";
 
 const COMMUNITY_LINK_CONFIG: {
   key: keyof CommunityLinks;
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  icon: React.ComponentType<{
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
   label: string;
   color: string;
 }[] = [
@@ -52,10 +55,12 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Detail = { label: string; value: string; href?: string };
 
+/**
+ * Profile "About" tab presenting society overview, contact info, social links, and images.
+ */
 export function AboutTab({ society }: { society: Society }) {
   const links = society.communityLinks ?? {};
-  // FIX: URL validation now comes from the shared helper, so it matches what
-  // the create form saves (e.g. "example.com:8080" no longer disappears).
+  // Filter and normalize valid external social & community links
   const activeLinks = COMMUNITY_LINK_CONFIG.flatMap((config) => {
     const url = normalizeHttpUrl(links[config.key]);
     return url ? [{ ...config, url }] : [];
@@ -82,15 +87,16 @@ export function AboutTab({ society }: { society: Society }) {
     },
   ].filter((detail) => detail.value);
 
-  // FIX: sanitizeImageUrl may return an empty string for a bad URL, and
-  // next/image throws on an empty src. Only render when we have a real src.
+  // Sanitized logo and banner URLs for safe rendering
   const logoSrc = society.logoURL ? sanitizeImageUrl(society.logoURL) : "";
-  const bannerSrc = society.bannerURL ? sanitizeImageUrl(society.bannerURL) : "";
+  const bannerSrc = society.bannerURL
+    ? sanitizeImageUrl(society.bannerURL)
+    : "";
 
   const hasDescription = Boolean(society.description?.trim());
   const hasImages = Boolean(logoSrc || bannerSrc);
 
-  // The tab used to render completely blank for sparse profiles.
+  // Fallback state for sparse profiles
   if (
     !hasDescription &&
     details.length === 0 &&

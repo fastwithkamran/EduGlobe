@@ -16,7 +16,9 @@ export function NoSocietyState({
         margin: "0 auto",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+      <div
+        style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}
+      >
         <div
           style={{
             width: 56,
@@ -60,7 +62,10 @@ export function NoSocietyState({
           Return to feed
         </Link>
       ) : (
-        <Link href="/create-society" className="btn btn-primary inline-flex items-center gap-1.5">
+        <Link
+          href="/create-society"
+          className="btn btn-primary inline-flex items-center gap-1.5"
+        >
           <FiPlus className="w-4 h-4" /> Create a society
         </Link>
       )}

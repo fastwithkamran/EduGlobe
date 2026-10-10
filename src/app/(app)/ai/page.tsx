@@ -6,7 +6,13 @@ import { useAuth } from "@/contexts/AuthContext";
 import { sanitizeImageUrl } from "@/lib/utils";
 import type { AIMessage } from "@/types";
 import { AIMessageContent } from "./_components/AIMessageContent";
-import { FiAward, FiBriefcase, FiGlobe, FiSend, FiLoader } from "react-icons/fi";
+import {
+  FiAward,
+  FiBriefcase,
+  FiGlobe,
+  FiSend,
+  FiLoader,
+} from "react-icons/fi";
 import { HiOutlineAcademicCap, HiOutlineSparkles } from "react-icons/hi2";
 
 // ─── Quick prompt suggestions — opportunity discovery focused ─────────────────
@@ -306,7 +312,8 @@ export default function AIPage() {
             marginBottom: 4,
           }}
         >
-          <HiOutlineSparkles className="text-[var(--primary-400)]" /> AI Assistant
+          <HiOutlineSparkles className="text-[var(--primary-400)]" /> AI
+          Assistant
         </h1>
         <p style={{ color: "var(--text-tertiary)", fontSize: 13 }}>
           Powered by Google Gemini
@@ -431,7 +438,11 @@ export default function AIPage() {
                         alt=""
                         width={28}
                         height={28}
-                        style={{ objectFit: "cover", width: "100%", height: "100%" }}
+                        style={{
+                          objectFit: "cover",
+                          width: "100%",
+                          height: "100%",
+                        }}
                       />
                     ) : (
                       (user?.displayName?.slice(0, 2).toUpperCase() ?? "ME")

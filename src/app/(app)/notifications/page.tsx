@@ -83,9 +83,7 @@ function NotificationRow({
         </p>
         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 text-[11px] text-[var(--text-muted)]">
           {createdAt ? (
-            <time dateTime={createdAt.toISOString()}>
-              {timeAgo(createdAt)}
-            </time>
+            <time dateTime={createdAt.toISOString()}>{timeAgo(createdAt)}</time>
           ) : (
             <span>Just now</span>
           )}
@@ -235,7 +233,10 @@ export default function NotificationsPage() {
       await markAllNotificationsRead(uid);
       toast.success("All notifications marked as read");
     } catch (error) {
-      console.error("[NotificationsPage] markAllNotificationsRead failed:", error);
+      console.error(
+        "[NotificationsPage] markAllNotificationsRead failed:",
+        error,
+      );
       toast.error("Failed to update notifications");
     } finally {
       setMarkingAll(false);
@@ -345,7 +346,8 @@ export default function NotificationsPage() {
             className="mb-1 text-[22px] font-extrabold flex items-center gap-2"
             style={{ fontFamily: "var(--font-heading)" }}
           >
-            <FiBell className="w-6 h-6 text-[var(--primary-400)]" /> Notifications
+            <FiBell className="w-6 h-6 text-[var(--primary-400)]" />{" "}
+            Notifications
           </h1>
           <p
             className="m-0 text-[13px] text-[var(--text-tertiary)]"

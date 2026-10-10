@@ -32,9 +32,6 @@ export function SocietyAboutDialog({
       .then((result) => {
         if (!active) return;
         setSociety(result);
-        // FIX: a null result means "deleted / not found", not a load failure.
-        // Previously `setError(!result)` made the "no longer available"
-        // message unreachable.
         setError(false);
       })
       .catch((fetchError: unknown) => {
@@ -53,10 +50,7 @@ export function SocietyAboutDialog({
     };
   }, [societyId, retryCount]);
 
-  // ── Focus management + scroll lock (runs once on mount) ───────────────────
-  // FIX: this used to depend on [onClose]. The parent passes an inline arrow
-  // function, so every parent re-render (e.g. any live feed update) re-ran the
-  // effect and stole focus back to the close button.
+  // Focus management and background scroll lock on mount
   useEffect(() => {
     const previouslyFocused = document.activeElement;
     closeButtonRef.current?.focus();
@@ -145,7 +139,10 @@ export function SocietyAboutDialog({
           ) : society ? (
             <AboutTab society={society} />
           ) : (
-            <div className="py-10 text-center" role={error ? "alert" : undefined}>
+            <div
+              className="py-10 text-center"
+              role={error ? "alert" : undefined}
+            >
               <p className="mb-4 text-sm text-[var(--text-secondary)]">
                 {error
                   ? "Could not load this society’s information."

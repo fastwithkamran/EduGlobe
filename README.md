@@ -199,7 +199,8 @@ Opportune/
 │   │   ├── CommentThread.tsx
 │   │   ├── Loader.tsx
 │   │   ├── OpportunityCard.tsx
-│   │   └── OpportunityMetaFields.tsx
+│   │   ├── OpportunityMetaFields.tsx
+│   │   └── PostCardParts.tsx
 │   ├── contexts/
 │   │   └── AuthContext.tsx
 │   ├── hooks/
@@ -210,6 +211,7 @@ Opportune/
 │   │   ├── gemini.ts
 │   │   ├── postHelpers.ts
 │   │   ├── url.ts
+│   │   ├── useOptimisticLike.ts
 │   │   └── utils.ts
 │   └── types/
 │       └── index.ts

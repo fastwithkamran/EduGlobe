@@ -14,8 +14,7 @@ const THEME_COLORS: Record<AppTheme, string> = {
 };
 
 /**
- * FIX: localStorage can throw (Safari private mode, blocked cookies, quota).
- * An uncaught throw here crashed the effect and left the toggle dead.
+ * Safely reads the persisted theme from localStorage.
  */
 function readStoredTheme(): AppTheme | null {
   try {
@@ -43,8 +42,7 @@ function applyTheme(theme: AppTheme) {
   if (theme === "light") root.dataset.theme = "light";
   else delete root.dataset.theme;
 
-  // FIX: the layout hard-codes a dark theme-color, so light mode kept a dark
-  // status bar / browser chrome on mobile.
+  // Update mobile browser chrome color
   let metas = document.querySelectorAll<HTMLMetaElement>(
     'meta[name="theme-color"]',
   );
@@ -59,6 +57,9 @@ function applyTheme(theme: AppTheme) {
   metas.forEach((meta) => meta.setAttribute("content", THEME_COLORS[theme]));
 }
 
+/**
+ * Hook for querying and toggling the application color theme (light / dark).
+ */
 export function useTheme() {
   const [theme, setThemeState] = useState<AppTheme>("light");
 
@@ -77,8 +78,7 @@ export function useTheme() {
       sync(readStoredTheme() ?? "light");
     };
 
-    // FIX: same-tab changes carry the theme in the event. Re-reading storage
-    // here reverted the toggle whenever storage writes were failing.
+    // Listen for custom theme change events within the same tab
     const onChange = (event: Event) => {
       const detail = (event as CustomEvent<AppTheme>).detail;
       sync(detail === "light" ? "light" : "dark");

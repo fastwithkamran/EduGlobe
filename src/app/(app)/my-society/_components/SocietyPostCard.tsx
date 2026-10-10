@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import { deletePost, updatePost } from "@/lib/firestore";
-import { timeAgo, TYPE_COLORS, TYPE_TEXTS, OPPORTUNITY_TYPES } from "@/lib/postHelpers";
+import {
+  timeAgo,
+  TYPE_COLORS,
+  TYPE_TEXTS,
+  OPPORTUNITY_TYPES,
+} from "@/lib/postHelpers";
 import { useOptimisticLike } from "@/lib/useOptimisticLike";
 import { OpportunityCard } from "@/components/OpportunityCard";
 import {
@@ -38,6 +43,9 @@ const actionButtonStyle: React.CSSProperties = {
   transition: "all .15s",
 };
 
+/**
+ * Post card rendered on the Society profile page with inline editing, deletion, and opportunity details.
+ */
 export function SocietyPostCard({
   post,
   currentUserId,
@@ -60,7 +68,6 @@ export function SocietyPostCard({
   const [saving, setSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Older / partially written documents can lack these fields
   const attachments = post.attachments ?? [];
   const content = post.content ?? "";
   const commentCount = Math.max(post.commentCount ?? 0, 0);
@@ -80,7 +87,6 @@ export function SocietyPostCard({
     post.createdAt instanceof Date &&
     post.updatedAt.getTime() > post.createdAt.getTime() + 5_000;
 
-  // Validation + "did anything actually change?"
   const metaError = isOpportunity ? validateOpportunityMeta(editMeta) : null;
   const hasChanges =
     editText.trim() !== content.trim() ||
@@ -94,7 +100,6 @@ export function SocietyPostCard({
     !metaError &&
     hasChanges;
 
-  // Put the cursor in the textarea when edit mode opens
   useEffect(() => {
     if (editing) textareaRef.current?.focus();
   }, [editing]);
@@ -119,8 +124,6 @@ export function SocietyPostCard({
       console.error("[SocietyPostCard] Delete failed:", error);
       toast.error("Couldn’t delete the post. Try again.");
     } finally {
-      // Reset even on success: if the feed doesn't unmount the card, it
-      // used to stay stuck at 60% opacity.
       setDeleting(false);
     }
   };
@@ -185,7 +188,11 @@ export function SocietyPostCard({
                     setEditing(true);
                   }}
                 >
-                  <FiEdit2 style={{ width: 12, height: 12 }} aria-hidden="true" /> Edit
+                  <FiEdit2
+                    style={{ width: 12, height: 12 }}
+                    aria-hidden="true"
+                  />{" "}
+                  Edit
                 </button>
               )}
               <button
@@ -196,7 +203,10 @@ export function SocietyPostCard({
                 onClick={() => setConfirmDelete(true)}
                 disabled={deleting}
               >
-                <FiTrash2 style={{ width: 12, height: 12 }} aria-hidden="true" />
+                <FiTrash2
+                  style={{ width: 12, height: 12 }}
+                  aria-hidden="true"
+                />
               </button>
             </div>
           )}
@@ -292,9 +302,11 @@ export function SocietyPostCard({
         )}
 
         {/* Opportunity details */}
-        {!editing && isOpportunity && hasOpportunityMeta(post.opportunityMeta) && (
-          <OpportunityCard meta={post.opportunityMeta!} type={post.type} />
-        )}
+        {!editing &&
+          isOpportunity &&
+          hasOpportunityMeta(post.opportunityMeta) && (
+            <OpportunityCard meta={post.opportunityMeta!} type={post.type} />
+          )}
 
         {/* Same attachment rendering as PostCard: images previously crashed on
             non-whitelisted hosts (no `unoptimized`) and had no error fallback. */}
@@ -328,7 +340,9 @@ export function SocietyPostCard({
             className="btn-ghost"
             style={{
               ...actionButtonStyle,
-              color: showComments ? "var(--primary-400)" : "var(--text-tertiary)",
+              color: showComments
+                ? "var(--primary-400)"
+                : "var(--text-tertiary)",
             }}
           >
             <FiMessageCircle style={{ width: 13, height: 13 }} /> {commentCount}

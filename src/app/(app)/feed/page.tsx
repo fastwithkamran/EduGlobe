@@ -24,10 +24,7 @@ import {
   FiBriefcase,
   FiCalendar,
 } from "react-icons/fi";
-import {
-  HiOutlineAcademicCap,
-  HiOutlineMegaphone,
-} from "react-icons/hi2";
+import { HiOutlineAcademicCap, HiOutlineMegaphone } from "react-icons/hi2";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -38,7 +35,10 @@ type FeedTab = "all" | "following";
 const TYPE_FILTERS: Array<{
   value: PostType | "all";
   label: string;
-  icon?: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  icon?: React.ComponentType<{
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
 }> = [
   { value: "all", label: "All" },
   { value: "hackathon", label: "Hackathons", icon: FiCode },
@@ -51,7 +51,12 @@ const TYPE_FILTERS: Array<{
 // ─── Page ──────────────────────────────────────────────────────────────────────
 
 export default function GlobalFeedPage() {
-  const { user, isSuperAdmin, loading: authLoading, loginWithGoogle } = useAuth();
+  const {
+    user,
+    isSuperAdmin,
+    loading: authLoading,
+    loginWithGoogle,
+  } = useAuth();
 
   const [tab, setTab] = useState<FeedTab>("all");
   const [loadingAll, setLoadingAll] = useState(true);
@@ -299,9 +304,19 @@ export default function GlobalFeedPage() {
                 gap: 8,
               }}
             >
-              <FiGlobe className="text-[var(--primary-400)]" /> Global Opportunity Feed
+              <FiGlobe className="text-[var(--primary-400)]" /> Global
+              Opportunity Feed
             </h1>
-            <p style={{ color: "var(--text-tertiary)", fontSize: 13, display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+            <p
+              style={{
+                color: "var(--text-tertiary)",
+                fontSize: 13,
+                display: "flex",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 6,
+              }}
+            >
               Discover posts from institutes around the world
               {isSuperAdmin && (
                 <span
@@ -540,8 +555,8 @@ export default function GlobalFeedPage() {
               animation: "pulse 2s ease-in-out infinite",
             }}
           >
-            <FiArrowUp style={{ width: 14, height: 14 }} /> {pendingCount} new post{pendingCount !== 1 ? "s" : ""} — tap to
-            show
+            <FiArrowUp style={{ width: 14, height: 14 }} /> {pendingCount} new
+            post{pendingCount !== 1 ? "s" : ""} — tap to show
           </button>
         </div>
       )}
@@ -558,7 +573,13 @@ export default function GlobalFeedPage() {
           <FeedSkeleton />
         ) : tab === "following" && !user ? (
           <div style={{ textAlign: "center", padding: "80px 24px" }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
               <div
                 style={{
                   width: 56,
@@ -649,7 +670,13 @@ export default function GlobalFeedPage() {
         ) : filteredPosts.length === 0 ? (
           // Empty / no results
           <div style={{ textAlign: "center", padding: "80px 24px" }}>
-            <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
               <div
                 style={{
                   width: 56,

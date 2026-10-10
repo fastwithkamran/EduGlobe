@@ -39,7 +39,8 @@ function normalizeIp(raw: string): string {
   // "[::1]:1234" -> "::1", "1.2.3.4:5678" -> "1.2.3.4"
   const bracketed = ip.match(/^\[([^\]]+)\](?::\d+)?$/);
   if (bracketed) ip = bracketed[1];
-  else if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(ip)) ip = ip.replace(/:\d+$/, "");
+  else if (/^\d{1,3}(?:\.\d{1,3}){3}:\d+$/.test(ip))
+    ip = ip.replace(/:\d+$/, "");
 
   const version = isIP(ip);
   if (version === 0) return "unknown";
@@ -395,11 +396,9 @@ export async function POST(req: NextRequest) {
   // Peek at the first chunk BEFORE committing to a 200 response, so a failed
   // upstream call returns a real error status (and refunds the user's quota)
   // instead of a "successful" response containing an error sentence.
-  const iterator = generateAIStream(
-    body.message,
-    body.history,
-    req.signal,
-  )[Symbol.asyncIterator]();
+  const iterator = generateAIStream(body.message, body.history, req.signal)[
+    Symbol.asyncIterator
+  ]();
 
   let first: IteratorResult<string>;
   try {

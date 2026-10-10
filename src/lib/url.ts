@@ -12,7 +12,9 @@
  * - Still accepts "host.com:8080/path" (a host:port is not a scheme).
  * - Rejects embedded credentials ("https://user:pass@host").
  */
-export function normalizeHttpUrl(raw: string | null | undefined): string | null {
+export function normalizeHttpUrl(
+  raw: string | null | undefined,
+): string | null {
   const value = raw?.trim();
   if (!value) return null;
 

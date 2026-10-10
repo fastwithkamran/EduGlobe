@@ -95,9 +95,7 @@ export function ImageUploadField({
             setDragging(true);
           }}
           onDragLeave={(event) => {
-            // FIX: dragleave also fires when the cursor moves onto a child
-            // (the preview <img>), so the highlight flickered. Only clear it
-            // when the pointer actually leaves the dropzone.
+            // Avoid dragleave flicker when moving over nested child elements
             if (
               event.relatedTarget instanceof Node &&
               event.currentTarget.contains(event.relatedTarget)

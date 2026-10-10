@@ -56,7 +56,8 @@ export function SocietyRow({
         )}
         <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-[var(--text-muted)]">
           <span className="inline-flex items-center gap-1">
-            <FiHeart className="text-xs text-rose-500" /> {society.followerCount} followers
+            <FiHeart className="text-xs text-rose-500" />{" "}
+            {society.followerCount} followers
           </span>
           <span className="font-mono text-[10px]">
             ID: {society.id.slice(0, 8)}…

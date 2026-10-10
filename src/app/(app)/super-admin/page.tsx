@@ -121,7 +121,8 @@ export default function SuperAdminPage() {
               className="mb-1 flex items-center gap-2 text-[22px] font-extrabold"
               style={{ fontFamily: "var(--font-heading)" }}
             >
-              <FiLayers className="text-[var(--text-secondary)]" /> Manage Societies
+              <FiLayers className="text-[var(--text-secondary)]" /> Manage
+              Societies
             </h1>
             <p className="m-0 flex flex-wrap items-center gap-2 text-[13px] text-[var(--text-tertiary)]">
               {loading
@@ -140,7 +141,10 @@ export default function SuperAdminPage() {
           role="note"
           className="mb-5 flex items-start gap-2.5 rounded-xl border border-red-500/20 bg-red-500/[0.06] px-4 py-3 text-[13px] text-[var(--text-secondary)]"
         >
-          <FiAlertTriangle className="mt-0.5 shrink-0 text-base text-red-500" aria-hidden="true" />
+          <FiAlertTriangle
+            className="mt-0.5 shrink-0 text-base text-red-500"
+            aria-hidden="true"
+          />
           <span>
             Deletion removes the society, its top-level posts, and follow
             records. Nested post comments and post attachment files are not
@@ -189,7 +193,10 @@ export default function SuperAdminPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="p-10 text-center text-[var(--text-tertiary)] sm:p-14">
-            <div aria-hidden="true" className="mb-3 flex justify-center text-4xl text-[var(--text-tertiary)]">
+            <div
+              aria-hidden="true"
+              className="mb-3 flex justify-center text-4xl text-[var(--text-tertiary)]"
+            >
               <HiOutlineBuildingLibrary />
             </div>
             <h2 className="mb-1 text-[15px] font-semibold text-[var(--text-secondary)]">

@@ -30,7 +30,9 @@ const NAV_ITEMS = [
   },
   {
     section: "Community",
-    items: [{ label: "Society", href: "/my-society", icon: HiOutlineBuildingLibrary }],
+    items: [
+      { label: "Society", href: "/my-society", icon: HiOutlineBuildingLibrary },
+    ],
   },
   {
     section: "AI Tools",
@@ -183,7 +185,12 @@ export default function AdminLayout({
     { label: "Feed", href: "/feed", icon: FiGlobe },
     { label: "Society", href: "/my-society", icon: HiOutlineBuildingLibrary },
     { label: "AI", href: "/ai", icon: HiOutlineSparkles },
-    { label: "Alerts", href: "/notifications", icon: FiBell, badge: unreadCount },
+    {
+      label: "Alerts",
+      href: "/notifications",
+      icon: FiBell,
+      badge: unreadCount,
+    },
     { label: "Profile", href: "/settings", icon: FiSettings },
   ];
 
@@ -344,7 +351,8 @@ export default function AdminLayout({
               color: "#ef4444",
             }}
           >
-            <FiZap style={{ width: 14, height: 14, display: "inline-block" }} /> Super Admin Mode
+            <FiZap style={{ width: 14, height: 14, display: "inline-block" }} />{" "}
+            Super Admin Mode
           </div>
         )}
 
@@ -527,7 +535,13 @@ export default function AdminLayout({
                     }}
                   >
                     {isSuperAdmin ? (
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
                         <FiZap style={{ width: 12, height: 12 }} /> Super Admin
                       </span>
                     ) : userProfile?.role === "admin" ? (
@@ -560,7 +574,13 @@ export default function AdminLayout({
                     (e.currentTarget.style.color = "var(--text-tertiary)")
                   }
                 >
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <span
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                    }}
+                  >
                     <FiLogOut style={{ width: 14, height: 14 }} /> Log Out
                   </span>
                 </button>
@@ -586,7 +606,9 @@ export default function AdminLayout({
                   }}
                 >
                   {theme === "dark" ? (
-                    <FiSun style={{ width: 15, height: 15, color: "#f59e0b" }} />
+                    <FiSun
+                      style={{ width: 15, height: 15, color: "#f59e0b" }}
+                    />
                   ) : (
                     <FiMoon style={{ width: 15, height: 15 }} />
                   )}

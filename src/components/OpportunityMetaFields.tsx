@@ -237,7 +237,8 @@ export function getOpportunityMetaErrors(
 ): Partial<Record<MetaField, string>> {
   const errors: Partial<Record<MetaField, string>> = {};
   if (!isValidOpportunityLink(meta.applyLink)) {
-    errors.applyLink = "Enter a valid web address, like https://example.com/apply";
+    errors.applyLink =
+      "Enter a valid web address, like https://example.com/apply";
   }
   // yyyy-mm-dd strings compare correctly as text
   if (meta.startDate && meta.endDate && meta.endDate < meta.startDate) {
@@ -265,23 +266,20 @@ export function OpportunityMetaFields({
 }) {
   const baseId = useId();
 
-  // FIX: the old code trimmed and re-split on EVERY keystroke, so you could not
-  // type a space ("Online" + " " became "Online" again) or a comma in the
-  // skills field. Keep exactly what the user typed here and only clean it up
-  // when the post is saved (normalizeOpportunityMeta).
+  // Local draft state for skills so users can comfortably type commas and spaces
   const [skillsDraft, setSkillsDraft] = useState(() =>
     Array.isArray(value.skills) ? value.skills.join(", ") : "",
   );
   const [syncedSkillsKey, setSyncedSkillsKey] = useState(() =>
     skillsKey(value.skills),
   );
-  // If the parent replaces the skills (e.g. "Cancel" resets the form), follow it.
+  // Sync draft state if external reset occurs (e.g. form cancel)
   if (skillsKey(value.skills) !== syncedSkillsKey) {
     setSyncedSkillsKey(skillsKey(value.skills));
     setSkillsDraft(Array.isArray(value.skills) ? value.skills.join(", ") : "");
   }
 
-  // Hooks above must run on every render, so the early return comes after them.
+  // Hook calls must precede early return
   if (type === "announcement") return null;
   const fields = FIELD_CONFIG[type];
   if (!fields) return null;
@@ -339,7 +337,9 @@ export function OpportunityMetaFields({
               value={fieldValue}
               disabled={disabled}
               maxLength={maxLengthFor(field)}
-              min={field === "endDate" ? value.startDate || undefined : undefined}
+              min={
+                field === "endDate" ? value.startDate || undefined : undefined
+              }
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? errorId : undefined}
               onChange={(event) =>
@@ -347,12 +347,15 @@ export function OpportunityMetaFields({
                   ? setSkills(event.target.value)
                   : setText(field as TextField, event.target.value)
               }
-              // No inline fontSize: globals.css forces 16px on mobile so iOS
-              // doesn't zoom on focus, and an inline size would override that.
               style={{ marginTop: 4 }}
             />
             {error && (
-              <span id={errorId} role="alert" className="field-error" style={{ display: "block" }}>
+              <span
+                id={errorId}
+                role="alert"
+                className="field-error"
+                style={{ display: "block" }}
+              >
                 {error}
               </span>
             )}

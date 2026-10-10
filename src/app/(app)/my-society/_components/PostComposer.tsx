@@ -44,7 +44,6 @@ const TYPE_ICONS: Record<
 const MAX_CHARS = 500;
 const MAX_POST_IMAGES = 2;
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-// FIX: documents had no size or count limit at all.
 const MAX_DOC_SIZE = 10 * 1024 * 1024;
 const MAX_ATTACHMENTS = 5;
 
@@ -52,10 +51,16 @@ const isImageFile = (file: File) => file.type.startsWith("image/");
 
 /** Storage-safe file name: no slashes, spaces or odd characters. */
 const safeFileName = (name: string) =>
-  name.replace(/[^\w.-]+/g, "_").replace(/^\.+/, "").slice(-100) || "file";
+  name
+    .replace(/[^\w.-]+/g, "_")
+    .replace(/^\.+/, "")
+    .slice(-100) || "file";
 
 type PendingFile = { file: File; previewUrl?: string };
 
+/**
+ * Rich post creation form for society admins supporting text, file attachments, and opportunity metadata.
+ */
 export function PostComposer({
   society,
   authorId,
@@ -150,15 +155,14 @@ export function PostComposer({
     setProgress(0);
     try {
       const attachments: PostAttachment[] = [];
-      const totalBytes = files.reduce((sum, { file }) => sum + file.size, 0) || 1;
+      const totalBytes =
+        files.reduce((sum, { file }) => sum + file.size, 0) || 1;
       let doneBytes = 0;
 
       for (const [index, { file: f }] of files.entries()) {
         const url = await uploadFile(
           f,
-          // FIX: sanitized + unique path (raw names could contain "/" etc.).
           `posts/${society.id}/${Date.now()}_${index}_${safeFileName(f.name)}`,
-          // FIX: progress was per-file, so the bar reset for every upload.
           (p) =>
             setProgress(((doneBytes + (p / 100) * f.size) / totalBytes) * 100),
         );
@@ -197,9 +201,10 @@ export function PostComposer({
       setMeta({});
       if (fileRef.current) fileRef.current.value = "";
     } catch (error) {
-      // FIX: errors were swallowed with no log, making failures undebuggable.
       console.error("[PostComposer] Failed to publish post:", error);
-      toast.error("Couldn’t publish your post. Your draft is still here, so try again.");
+      toast.error(
+        "Couldn’t publish your post. Your draft is still here, so try again.",
+      );
     } finally {
       publishingRef.current = false;
       setUploading(false);
@@ -257,7 +262,7 @@ export function PostComposer({
                 aria-pressed={type === o.value}
                 disabled={uploading}
                 onClick={() => {
-                  if (type === o.value) return; // FIX: re-clicking wiped the details
+                  if (type === o.value) return;
                   setType(o.value);
                   setMeta({});
                 }}

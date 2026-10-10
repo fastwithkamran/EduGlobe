@@ -87,7 +87,7 @@ export default function CreateSocietyPage() {
     if (userProfile?.societyId) router.replace("/my-society");
   }, [router, userProfile?.societyId]);
 
-  // FIX: closing/reloading the tab mid-upload silently abandoned the upload.
+  // Prevent accidental navigation during active media upload
   useEffect(() => {
     if (!saving) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -131,7 +131,10 @@ export default function CreateSocietyPage() {
 
     if (form.website.trim() && normalizeHttpUrl(form.website) === null)
       next.website = "Enter a valid http(s) link, e.g. https://yoursociety.com";
-    if (form.contactEmail.trim() && !EMAIL_PATTERN.test(form.contactEmail.trim()))
+    if (
+      form.contactEmail.trim() &&
+      !EMAIL_PATTERN.test(form.contactEmail.trim())
+    )
       next.contactEmail = "Enter a valid email address.";
 
     for (const [key, value] of Object.entries(form.communityLinks)) {
@@ -292,15 +295,18 @@ export default function CreateSocietyPage() {
         >
           Sign in to create a society and share opportunities with students.
         </p>
-        <button type="button" className="btn btn-primary" onClick={handleSignIn}>
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={handleSignIn}
+        >
           Sign in with Google
         </button>
       </div>
     );
   }
 
-  // FIX: a signed-in user whose profile hadn't loaded yet got the full form
-  // and then a "You must be signed in" toast on submit (confusing + wrong).
+  // Profile loading and error states
   if (profileError) {
     return (
       <div role="alert" style={{ padding: 40, textAlign: "center" }}>
@@ -430,8 +436,11 @@ export default function CreateSocietyPage() {
             {saving ? (
               "Creating…"
             ) : (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <HiOutlineBuildingLibrary style={{ width: 16, height: 16 }} /> Create Society
+              <span
+                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+              >
+                <HiOutlineBuildingLibrary style={{ width: 16, height: 16 }} />{" "}
+                Create Society
               </span>
             )}
           </button>

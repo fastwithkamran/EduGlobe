@@ -19,11 +19,7 @@ export interface SocietyFormValues {
 }
 
 export type BasicField =
-  | "name"
-  | "organization"
-  | "city"
-  | "country"
-  | "description";
+  "name" | "organization" | "city" | "country" | "description";
 export type ContactField = "website" | "contactEmail";
 
 /** Keys are field keys ("name", "website", "community.discord", ...). */
@@ -91,7 +87,10 @@ const optionalNote: React.CSSProperties = {
 
 const COMMUNITY_LINKS: {
   key: keyof CommunityLinks;
-  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  icon: React.ComponentType<{
+    className?: string;
+    style?: React.CSSProperties;
+  }>;
   label: string;
   placeholder: string;
 }[] = [
@@ -292,8 +291,7 @@ export function BasicInformationFields({
           value={form.description}
           aria-required="true"
           aria-invalid={errors.description ? true : undefined}
-          // FIX: the character counter was dropped from aria-describedby as
-          // soon as an error appeared; announce both.
+          // Associate both error and counter for screen readers
           aria-describedby={
             errors.description
               ? `${descriptionId}-error ${descriptionId}-count`
