@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { FiAlertTriangle, FiKey, FiTrash2 } from "react-icons/fi";
 
 export function DeleteAccountModal({
   onConfirm,
@@ -90,11 +91,10 @@ export function DeleteAccountModal({
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 24,
             margin: "0 auto 18px",
           }}
         >
-          ⚠️
+          <FiAlertTriangle style={{ width: 24, height: 24, color: "#ef4444" }} />
         </div>
         <h2
           id="delete-account-title"
@@ -134,10 +134,13 @@ export function DeleteAccountModal({
             color: "var(--text-secondary)",
             lineHeight: 1.6,
             marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
           }}
         >
-          🔑 A Google sign-in popup will appear to verify your identity before
-          deletion.
+          <FiKey style={{ width: 16, height: 16, color: "#3b82f6", flexShrink: 0 }} />
+          <span>A Google sign-in popup will appear to verify your identity before deletion.</span>
         </div>
 
         <div style={{ marginBottom: 20 }}>
@@ -192,9 +195,18 @@ export function DeleteAccountModal({
               cursor: ready && !loading ? "pointer" : "not-allowed",
               fontFamily: "var(--font-body)",
               transition: "all .15s",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
             }}
           >
-            {loading ? "⏳ Deleting…" : "🗑 Delete My Account"}
+            {loading ? (
+              "Deleting…"
+            ) : (
+              <>
+                <FiTrash2 style={{ width: 14, height: 14 }} /> Delete My Account
+              </>
+            )}
           </button>
         </div>
       </div>

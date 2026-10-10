@@ -11,6 +11,7 @@ import {
 } from "@/lib/firestore";
 import { timeAgo } from "@/lib/postHelpers";
 import type { Notification } from "@/types";
+import { FiBell, FiFileText, FiLock, FiGlobe } from "react-icons/fi";
 
 const NOTIFICATION_LIMIT = 30;
 const TIME_REFRESH_MS = 60_000;
@@ -52,8 +53,11 @@ function NotificationRow({
             : "0 0 6px var(--primary-500)",
         }}
       />
-      <span aria-hidden="true" className="w-5 shrink-0 text-center text-base">
-        📝
+      <span
+        aria-hidden="true"
+        className="w-5 shrink-0 flex items-center justify-center text-[var(--primary-400)] mt-0.5"
+      >
+        <FiFileText style={{ width: 16, height: 16 }} />
       </span>
 
       <div className="min-w-0 flex-1">
@@ -254,8 +258,10 @@ export default function NotificationsPage() {
   if (signedOut) {
     body = (
       <div className="p-10 text-center sm:p-14">
-        <div aria-hidden="true" className="mb-3 text-4xl">
-          🔒
+        <div className="flex justify-center mb-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-tertiary)]">
+            <FiLock className="w-6 h-6" />
+          </div>
         </div>
         <h2 className="mb-1 text-[15px] font-semibold text-[var(--text-secondary)]">
           You’re signed out
@@ -292,8 +298,10 @@ export default function NotificationsPage() {
   } else if (visibleNotifications.length === 0) {
     body = (
       <div className="p-10 text-center sm:p-14">
-        <div aria-hidden="true" className="mb-3 text-4xl">
-          🔔
+        <div className="flex justify-center mb-3">
+          <div className="w-12 h-12 rounded-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-tertiary)]">
+            <FiBell className="w-6 h-6" />
+          </div>
         </div>
         <h2 className="mb-1 text-[15px] font-semibold text-[var(--text-secondary)]">
           No notifications yet
@@ -302,8 +310,11 @@ export default function NotificationsPage() {
           Follow societies in the Global Feed to hear when they share a new
           post.
         </p>
-        <Link href="/feed" className="btn btn-primary btn-sm inline-flex">
-          🌐 Go to Global Feed
+        <Link
+          href="/feed"
+          className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
+        >
+          <FiGlobe className="w-3.5 h-3.5" /> Go to Global Feed
         </Link>
       </div>
     );
@@ -331,10 +342,10 @@ export default function NotificationsPage() {
         <div>
           <h1
             id="notifications-heading"
-            className="mb-1 text-[22px] font-extrabold"
+            className="mb-1 text-[22px] font-extrabold flex items-center gap-2"
             style={{ fontFamily: "var(--font-heading)" }}
           >
-            <span aria-hidden="true">🔔</span> Notifications
+            <FiBell className="w-6 h-6 text-[var(--primary-400)]" /> Notifications
           </h1>
           <p
             className="m-0 text-[13px] text-[var(--text-tertiary)]"
@@ -351,7 +362,7 @@ export default function NotificationsPage() {
             disabled={markingAll}
             title="Marks all of your notifications as read, including ones older than the 30 shown here"
           >
-            {markingAll ? "⏳ Updating…" : "Mark all read"}
+            {markingAll ? "Updating…" : "Mark all read"}
           </button>
         )}
       </header>

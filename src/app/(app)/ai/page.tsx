@@ -6,26 +6,36 @@ import { useAuth } from "@/contexts/AuthContext";
 import { sanitizeImageUrl } from "@/lib/utils";
 import type { AIMessage } from "@/types";
 import { AIMessageContent } from "./_components/AIMessageContent";
+import { FiAward, FiBriefcase, FiGlobe, FiSend, FiLoader } from "react-icons/fi";
+import { HiOutlineAcademicCap, HiOutlineSparkles } from "react-icons/hi2";
 
 // ─── Quick prompt suggestions — opportunity discovery focused ─────────────────
-const QUICK_PROMPTS = [
+const QUICK_PROMPTS: Array<{
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  prompt: string;
+}> = [
   {
-    label: "🏆 Hackathons in PK",
+    icon: FiAward,
+    label: "Hackathons in PK",
     prompt:
       "Find me active hackathons and competitions in Pakistan right now that students can join",
   },
   {
-    label: "🎓 Scholarships 2026",
+    icon: HiOutlineAcademicCap,
+    label: "Scholarships 2026",
     prompt:
       "List top scholarships available for Pakistani students in 2026, with deadlines and eligibility",
   },
   {
-    label: "💼 Internships",
+    icon: FiBriefcase,
+    label: "Internships",
     prompt:
       "What are the best internship opportunities for CS students in Pakistan right now?",
   },
   {
-    label: "🌐 Global Contests",
+    icon: FiGlobe,
+    label: "Global Contests",
     prompt:
       "What global student competitions and hackathons are open to Pakistani students?",
   },
@@ -288,6 +298,7 @@ export default function AIPage() {
       </div>
       <div style={{ marginBottom: 16 }}>
         <h1
+          className="flex items-center gap-2"
           style={{
             fontFamily: "var(--font-heading)",
             fontSize: 22,
@@ -295,7 +306,7 @@ export default function AIPage() {
             marginBottom: 4,
           }}
         >
-          🤖 AI Assistant
+          <HiOutlineSparkles className="text-[var(--primary-400)]" /> AI Assistant
         </h1>
         <p style={{ color: "var(--text-tertiary)", fontSize: 13 }}>
           Powered by Google Gemini
@@ -306,18 +317,22 @@ export default function AIPage() {
       <div
         style={{ display: "flex", gap: 8, marginBottom: 14, flexWrap: "wrap" }}
       >
-        {QUICK_PROMPTS.map((qp) => (
-          <button
-            key={qp.label}
-            type="button"
-            className="btn btn-outline btn-sm"
-            onClick={() => sendMessage(qp.prompt)}
-            disabled={requestActive || !sessionRestored}
-            style={{ fontSize: 12 }}
-          >
-            {qp.label}
-          </button>
-        ))}
+        {QUICK_PROMPTS.map((qp) => {
+          const Icon = qp.icon;
+          return (
+            <button
+              key={qp.label}
+              type="button"
+              className="btn btn-outline btn-sm inline-flex items-center gap-1.5"
+              onClick={() => sendMessage(qp.prompt)}
+              disabled={requestActive || !sessionRestored}
+              style={{ fontSize: 12 }}
+            >
+              <Icon className="text-sm text-[var(--primary-400)]" />
+              {qp.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Chat window */}
@@ -551,7 +566,7 @@ export default function AIPage() {
             />
             <button
               type="button"
-              className="btn btn-primary btn-sm"
+              className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
               onClick={() => sendMessage(input)}
               disabled={
                 requestActive ||
@@ -560,7 +575,15 @@ export default function AIPage() {
                 input.length > MAX_MESSAGE_LENGTH
               }
             >
-              {requestActive ? "⏳" : "Send"}
+              {requestActive ? (
+                <>
+                  <FiLoader className="animate-spin text-sm" /> Sending…
+                </>
+              ) : (
+                <>
+                  <FiSend className="text-sm" /> Send
+                </>
+              )}
             </button>
           </div>
         </div>

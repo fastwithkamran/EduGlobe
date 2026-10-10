@@ -3,6 +3,8 @@
 import Image from "next/image";
 import { sanitizeImageUrl } from "@/lib/utils";
 import type { Society } from "@/types";
+import { FiHeart, FiTrash2 } from "react-icons/fi";
+import { HiCheckBadge } from "react-icons/hi2";
 
 export function SocietyRow({
   society,
@@ -40,8 +42,8 @@ export function SocietyRow({
             {society.name}
           </h2>
           {society.isVerified && (
-            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
-              ✓ Verified
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-500">
+              <HiCheckBadge className="text-xs" /> Verified
             </span>
           )}
         </div>
@@ -52,8 +54,10 @@ export function SocietyRow({
             {location}
           </p>
         )}
-        <div className="flex flex-wrap gap-x-3 text-[11px] text-[var(--text-muted)]">
-          <span>❤️ {society.followerCount} followers</span>
+        <div className="flex flex-wrap items-center gap-x-3 text-[11px] text-[var(--text-muted)]">
+          <span className="inline-flex items-center gap-1">
+            <FiHeart className="text-xs text-rose-500" /> {society.followerCount} followers
+          </span>
           <span className="font-mono text-[10px]">
             ID: {society.id.slice(0, 8)}…
           </span>
@@ -67,7 +71,7 @@ export function SocietyRow({
         aria-label={`Delete ${society.name}`}
         className="ml-auto inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-red-500/25 bg-red-500/[0.08] px-3.5 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-500/[0.18] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        🗑️ Delete
+        <FiTrash2 className="text-xs" /> Delete
       </button>
     </article>
   );

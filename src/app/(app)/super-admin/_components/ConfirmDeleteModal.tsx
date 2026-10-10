@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { Society } from "@/types";
+import { FiAlertTriangle, FiTrash2, FiLoader } from "react-icons/fi";
 
 export function ConfirmDeleteModal({
   society,
@@ -65,9 +66,9 @@ export function ConfirmDeleteModal({
       >
         <div
           aria-hidden="true"
-          className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full border-2 border-red-500/35 bg-red-500/10 text-2xl"
+          className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-full border-2 border-red-500/35 bg-red-500/10 text-2xl text-red-500"
         >
-          ⚠️
+          <FiAlertTriangle />
         </div>
         <h2
           id="delete-society-title"
@@ -120,7 +121,15 @@ export function ConfirmDeleteModal({
             disabled={loading}
             className="inline-flex min-w-40 items-center justify-center gap-1.5 rounded-lg border-0 bg-gradient-to-br from-red-500 to-red-700 px-5 py-2.5 text-[13px] font-bold text-white disabled:cursor-wait disabled:opacity-60"
           >
-            {loading ? "⏳ Deleting…" : "🗑️ Delete Society"}
+            {loading ? (
+              <>
+                <FiLoader className="animate-spin text-sm" /> Deleting…
+              </>
+            ) : (
+              <>
+                <FiTrash2 className="text-sm" /> Delete Society
+              </>
+            )}
           </button>
         </div>
       </div>

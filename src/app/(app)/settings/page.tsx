@@ -21,6 +21,16 @@ import { sanitizeImageUrl } from "@/lib/utils";
 import Image from "next/image";
 import { useTheme } from "@/hooks/useTheme";
 import { DeleteAccountModal } from "./_components/DeleteAccountModal";
+import {
+  FiSettings,
+  FiCamera,
+  FiSave,
+  FiMoon,
+  FiSun,
+  FiAlertTriangle,
+  FiLogOut,
+  FiTrash2,
+} from "react-icons/fi";
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/gif"]);
@@ -263,7 +273,7 @@ export default function SettingsPage() {
       await deleteUserAccount(user.uid);
       profileDataRemoved = true;
       await deleteUser(user);
-      toast.success("Account deleted. Goodbye 👋");
+      toast.success("Account deleted successfully.");
       router.push("/feed");
     } catch (err: unknown) {
       const errorCode =
@@ -317,7 +327,7 @@ export default function SettingsPage() {
               disabled={signingIn}
               style={{ alignSelf: "flex-start" }}
             >
-              {signingIn ? "⏳ Signing in…" : "Sign in with Google"}
+              {signingIn ? "Signing in…" : "Sign in with Google"}
             </button>
           </div>
         </div>
@@ -338,9 +348,12 @@ export default function SettingsPage() {
           fontSize: 22,
           fontWeight: 800,
           marginBottom: 4,
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
-        ⚙️ Settings
+        <FiSettings className="w-6 h-6 text-[var(--primary-400)]" /> Settings
       </h1>
       <p
         style={{
@@ -416,12 +429,18 @@ export default function SettingsPage() {
           <div>
             <button
               type="button"
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm inline-flex items-center gap-1.5"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               style={{ marginBottom: 6 }}
             >
-              {uploading ? "⏳ Uploading…" : "📷 Change Photo"}
+              {uploading ? (
+                "Uploading…"
+              ) : (
+                <>
+                  <FiCamera className="w-3.5 h-3.5" /> Change Photo
+                </>
+              )}
             </button>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
               JPG, PNG, or GIF · Maximum 5 MB · Stored on Cloudinary
@@ -520,12 +539,18 @@ export default function SettingsPage() {
           </div>
           <button
             type="button"
-            className="btn btn-primary btn-sm"
+            className="btn btn-primary btn-sm inline-flex items-center gap-1.5"
             onClick={handleSaveProfile}
             disabled={saving}
             style={{ alignSelf: "flex-start" }}
           >
-            {saving ? "⏳ Saving…" : "💾 Save Changes"}
+            {saving ? (
+              "Saving…"
+            ) : (
+              <>
+                <FiSave className="w-3.5 h-3.5" /> Save Changes
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -548,9 +573,20 @@ export default function SettingsPage() {
                 fontWeight: 600,
                 color: "var(--text-primary)",
                 marginBottom: 2,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
-              {theme === "dark" ? "🌙 Dark Mode" : "☀️ Light Mode"}
+              {theme === "dark" ? (
+                <>
+                  <FiMoon className="w-4 h-4 text-slate-300" /> Dark Mode
+                </>
+              ) : (
+                <>
+                  <FiSun className="w-4 h-4 text-amber-500" /> Light Mode
+                </>
+              )}
             </div>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
               Saved to your browser
@@ -590,7 +626,11 @@ export default function SettingsPage() {
                 boxShadow: "0 1px 4px rgba(0,0,0,0.3)",
               }}
             >
-              {theme === "dark" ? "🌙" : "☀️"}
+              {theme === "dark" ? (
+                <FiMoon style={{ width: 12, height: 12, color: "#1e293b" }} />
+              ) : (
+                <FiSun style={{ width: 12, height: 12, color: "#f59e0b" }} />
+              )}
             </span>
           </button>
         </div>
@@ -603,9 +643,12 @@ export default function SettingsPage() {
             ...head,
             borderBottom: "1px solid rgba(239,68,68,0.2)",
             color: "#ef4444",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          ⚠️ Danger Zone
+          <FiAlertTriangle className="w-4 h-4" /> Danger Zone
         </div>
         <div style={body}>
           {/* Sign Out */}
@@ -635,11 +678,17 @@ export default function SettingsPage() {
             </div>
             <button
               type="button"
-              className="btn btn-outline btn-sm"
+              className="btn btn-outline btn-sm inline-flex items-center gap-1.5"
               onClick={handleSignOut}
               disabled={signingOut}
             >
-              {signingOut ? "⏳ Signing out…" : "👋 Sign Out"}
+              {signingOut ? (
+                "Signing out…"
+              ) : (
+                <>
+                  <FiLogOut className="w-3.5 h-3.5" /> Sign Out
+                </>
+              )}
             </button>
           </div>
 
@@ -682,6 +731,9 @@ export default function SettingsPage() {
                 fontFamily: "var(--font-body)",
                 transition: "all .15s",
                 whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = "rgba(239,68,68,0.18)";
@@ -690,7 +742,7 @@ export default function SettingsPage() {
                 e.currentTarget.style.background = "rgba(239,68,68,0.08)";
               }}
             >
-              🗑 Delete Account
+              <FiTrash2 style={{ width: 13, height: 13 }} /> Delete Account
             </button>
           </div>
         </div>
