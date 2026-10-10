@@ -144,9 +144,9 @@ Opportune/
 │   └── workflows/
 │       └── ci.yml
 ├── public/
-│   ├── logo_bg.png
-│   └── animations/
-│       └── loading.json
+│   ├── animations/
+│   │   └── loading.json
+│   └── logo_bg.png
 ├── src/
 │   ├── app/
 │   │   ├── (app)/
@@ -193,7 +193,8 @@ Opportune/
 │   │   │       └── delete/
 │   │   │           └── route.ts
 │   │   ├── globals.css
-│   │   └── layout.tsx
+│   │   ├── layout.tsx
+│   │   └── page.tsx
 │   ├── components/
 │   │   ├── CommentThread.tsx
 │   │   ├── Loader.tsx
@@ -208,11 +209,13 @@ Opportune/
 │   │   ├── firestore.ts
 │   │   ├── gemini.ts
 │   │   ├── postHelpers.ts
+│   │   ├── url.ts
 │   │   └── utils.ts
 │   └── types/
 │       └── index.ts
 ├── .env.example
 ├── .gitignore
+├── eslint.config.mjs
 ├── firebase.json
 ├── firestore.indexes.json
 ├── firestore.rules
