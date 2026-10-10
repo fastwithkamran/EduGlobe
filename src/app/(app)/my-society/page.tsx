@@ -11,11 +11,13 @@ import { NoSocietyState } from "./_components/NoSocietyState";
 import { SocietyHeader } from "./_components/SocietyHeader";
 import Loader from "@/components/Loader";
 import type { Society, Post } from "@/types";
+import { FiFileText, FiInfo, FiLock } from "react-icons/fi";
+import { HiOutlineBuildingLibrary } from "react-icons/hi2";
 
 const PAGE_SIZE = 10;
 const TABS = [
-  { id: "feed", label: "📰 Feed" },
-  { id: "about", label: "ℹ️ About" },
+  { id: "feed", label: "Feed", icon: FiFileText },
+  { id: "about", label: "About", icon: FiInfo },
 ] as const;
 
 type Tab = (typeof TABS)[number]["id"];
@@ -140,10 +142,10 @@ export default function MySocietyPage() {
           <div>
             <h1
               id="society-heading"
-              className="mb-1 text-[22px] font-extrabold"
+              className="mb-1 text-[22px] font-extrabold flex items-center gap-2"
               style={{ fontFamily: "var(--font-heading)" }}
             >
-              <span aria-hidden="true">🏛️</span> Society
+              <HiOutlineBuildingLibrary className="w-6 h-6 text-[var(--primary-400)]" /> Society
             </h1>
             <p
               className="m-0 text-[13px] text-[var(--text-tertiary)]"
@@ -159,8 +161,10 @@ export default function MySocietyPage() {
           className="overflow-hidden rounded-[var(--radius-xl)] border border-[var(--border-primary)] bg-[var(--bg-card)]"
         >
           <div className="p-10 text-center sm:p-14">
-            <div aria-hidden="true" className="mb-3 text-4xl">
-              🔒
+            <div className="flex justify-center mb-3">
+              <div className="w-12 h-12 rounded-full bg-[var(--bg-input)] flex items-center justify-center text-[var(--text-tertiary)]">
+                <FiLock className="w-6 h-6" />
+              </div>
             </div>
             <h2 className="mb-1 text-[15px] font-semibold text-[var(--text-secondary)]">
               You’re signed out
@@ -285,8 +289,21 @@ export default function MySocietyPage() {
         color: "var(--text-tertiary)",
       }}
     >
-      <div aria-hidden="true" style={{ fontSize: 32, marginBottom: 10 }}>
-        📰
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+        <div
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: "50%",
+            background: "var(--bg-input)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--text-tertiary)",
+          }}
+        >
+          <FiFileText style={{ width: 22, height: 22 }} />
+        </div>
       </div>
       <div
         style={{
@@ -386,8 +403,12 @@ export default function MySocietyPage() {
                 cursor: "pointer",
                 transition: "all .15s",
                 fontFamily: "var(--font-body)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
               }}
             >
+              <item.icon style={{ width: 14, height: 14 }} />
               {item.label}
             </button>
           ))}

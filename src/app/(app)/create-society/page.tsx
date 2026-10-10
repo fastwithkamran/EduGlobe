@@ -9,6 +9,8 @@ import { normalizeHttpUrl } from "@/lib/url";
 import type { CommunityLinks } from "@/types";
 import Loader from "@/components/Loader";
 import { ImageUploadField } from "./_components/ImageUploadField";
+import { FiImage, FiLayers } from "react-icons/fi";
+import { HiOutlineBuildingLibrary } from "react-icons/hi2";
 import {
   BasicInformationFields,
   CommunityLinkFields,
@@ -246,7 +248,7 @@ export default function CreateSocietyPage() {
     } catch (error) {
       console.error("[CreateSocietyPage] Profile refresh failed:", error);
     }
-    toast.success(`🎉 "${form.name.trim()}" is live!`);
+    toast.success(`"${form.name.trim()}" is now live!`);
     router.replace("/my-society");
   };
 
@@ -349,7 +351,7 @@ export default function CreateSocietyPage() {
             <ImageUploadField
               id="society-logo"
               label="Logo (400×400 recommended)"
-              icon="🖼️"
+              icon={<FiImage style={{ width: 28, height: 28 }} />}
               file={logoFile}
               disabled={saving}
               onFileChange={setLogoFile}
@@ -357,7 +359,7 @@ export default function CreateSocietyPage() {
             <ImageUploadField
               id="society-banner"
               label="Banner (1200×400 recommended)"
-              icon="🏔️"
+              icon={<FiLayers style={{ width: 28, height: 28 }} />}
               file={bannerFile}
               disabled={saving}
               onFileChange={setBannerFile}
@@ -425,7 +427,13 @@ export default function CreateSocietyPage() {
             disabled={saving}
             style={{ minWidth: 160 }}
           >
-            {saving ? "⏳ Creating…" : "🏛️ Create Society"}
+            {saving ? (
+              "Creating…"
+            ) : (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <HiOutlineBuildingLibrary style={{ width: 16, height: 16 }} /> Create Society
+              </span>
+            )}
           </button>
         </div>
       </form>

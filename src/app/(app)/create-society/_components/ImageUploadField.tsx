@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import toast from "react-hot-toast";
+import { FiX } from "react-icons/fi";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -25,7 +26,7 @@ export function ImageUploadField({
 }: {
   id: string;
   label: string;
-  icon: string;
+  icon: React.ReactNode;
   file: File | null;
   disabled: boolean;
   onFileChange: (file: File | null) => void;
@@ -121,7 +122,13 @@ export function ImageUploadField({
             <span style={{ textAlign: "center", fontSize: 12 }}>
               <span
                 aria-hidden="true"
-                style={{ display: "block", fontSize: 24, marginBottom: 4 }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: 6,
+                  color: "var(--text-tertiary)",
+                }}
               >
                 {icon}
               </span>
@@ -143,9 +150,12 @@ export function ImageUploadField({
               padding: "4px 10px",
               background: "rgba(0,0,0,0.7)",
               color: "#fff",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 4,
             }}
           >
-            ✕ Remove
+            <FiX style={{ width: 12, height: 12 }} /> Remove
           </button>
         )}
 

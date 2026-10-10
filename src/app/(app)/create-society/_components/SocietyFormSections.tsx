@@ -1,4 +1,11 @@
 import type { CommunityLinks } from "@/types";
+import {
+  FaDiscord,
+  FaWhatsapp,
+  FaLinkedinIn,
+  FaXTwitter,
+  FaInstagram,
+} from "react-icons/fa6";
 
 export interface SocietyFormValues {
   name: string;
@@ -84,37 +91,37 @@ const optionalNote: React.CSSProperties = {
 
 const COMMUNITY_LINKS: {
   key: keyof CommunityLinks;
-  icon: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   placeholder: string;
 }[] = [
   {
     key: "discord",
-    icon: "🎮",
+    icon: FaDiscord,
     label: "Discord Server",
     placeholder: "https://discord.gg/...",
   },
   {
     key: "whatsapp",
-    icon: "💬",
+    icon: FaWhatsapp,
     label: "WhatsApp Group",
     placeholder: "https://chat.whatsapp.com/...",
   },
   {
     key: "linkedin",
-    icon: "💼",
+    icon: FaLinkedinIn,
     label: "LinkedIn Page",
     placeholder: "https://linkedin.com/company/...",
   },
   {
     key: "twitter",
-    icon: "🐦",
+    icon: FaXTwitter,
     label: "X / Twitter",
     placeholder: "https://x.com/...",
   },
   {
     key: "instagram",
-    icon: "📸",
+    icon: FaInstagram,
     label: "Instagram",
     placeholder: "https://instagram.com/...",
   },
@@ -152,7 +159,7 @@ function TextField({
 }: {
   id: string;
   label: string;
-  icon?: string;
+  icon?: React.ReactNode;
   value: string;
   onChange: (value: string) => void;
   error?: string;
@@ -166,7 +173,19 @@ function TextField({
   return (
     <div>
       <label style={fieldLabel} htmlFor={id}>
-        {icon && <span aria-hidden="true">{icon} </span>}
+        {icon && (
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              marginRight: 6,
+              verticalAlign: "-0.15em",
+            }}
+          >
+            {icon}
+          </span>
+        )}
         {label}
         {required && <span aria-hidden="true"> *</span>}
       </label>
@@ -389,11 +408,11 @@ export function CommunityLinkFields({
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {COMMUNITY_LINKS.map(({ key, icon, label, placeholder }) => (
+        {COMMUNITY_LINKS.map(({ key, icon: Icon, label, placeholder }) => (
           <TextField
             key={key}
             id={fieldId(`community.${key}`)}
-            icon={icon}
+            icon={<Icon style={{ width: 14, height: 14 }} />}
             label={label}
             inputMode="url"
             autoComplete="off"

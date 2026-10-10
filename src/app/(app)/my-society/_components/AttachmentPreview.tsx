@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { FiPaperclip, FiX } from "react-icons/fi";
 
 export function AttachmentPreview({
   file,
@@ -44,7 +45,9 @@ export function AttachmentPreview({
         <span
           title={file.name}
           style={{
-            display: "block",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
             maxWidth: 220,
             padding: "10px 36px 10px 10px",
             overflow: "hidden",
@@ -54,7 +57,7 @@ export function AttachmentPreview({
             fontSize: 11,
           }}
         >
-          📎 {file.name}
+          <FiPaperclip style={{ width: 12, height: 12, flexShrink: 0 }} /> {file.name}
         </span>
       )}
       <button
@@ -82,7 +85,7 @@ export function AttachmentPreview({
           opacity: disabled ? 0.5 : 1,
         }}
       >
-        ×
+        <FiX style={{ width: 14, height: 14 }} />
       </button>
     </div>
   );

@@ -19,7 +19,31 @@ import {
   normalizeOpportunityMeta,
 } from "@/components/OpportunityMetaFields";
 import { CommentThread } from "@/components/CommentThread";
-import type { OpportunityMeta, Post } from "@/types";
+import type { OpportunityMeta, Post, PostType } from "@/types";
+import {
+  FiEdit2,
+  FiTrash2,
+  FiPaperclip,
+  FiHeart,
+  FiMessageCircle,
+  FiCalendar,
+  FiCode,
+  FiBriefcase,
+  FiFileText,
+} from "react-icons/fi";
+import { FaHeart } from "react-icons/fa";
+import { HiOutlineAcademicCap, HiOutlineMegaphone } from "react-icons/hi2";
+
+const TYPE_ICONS: Record<
+  PostType,
+  React.ComponentType<{ className?: string; style?: React.CSSProperties }>
+> = {
+  announcement: HiOutlineMegaphone,
+  event: FiCalendar,
+  hackathon: FiCode,
+  scholarship: HiOutlineAcademicCap,
+  internship: FiBriefcase,
+};
 
 const MAX_EDIT_CHARS = 500;
 
@@ -154,18 +178,27 @@ export function SocietyPostCard({
           <div className="text-[11px] text-[var(--text-tertiary)] flex gap-1.5 items-center flex-wrap">
             {timeAgo(post.createdAt)}
             {isEdited && <span className="opacity-60">· edited</span>}
-            <span
-              style={{
-                background: TYPE_COLORS[post.type],
-                color: TYPE_TEXTS[post.type],
-                padding: "1px 7px",
-                borderRadius: 999,
-                fontSize: 10,
-                fontWeight: 500,
-              }}
-            >
-              {typeLabel}
-            </span>
+            {(() => {
+              const TypeIcon = TYPE_ICONS[post.type] ?? FiFileText;
+              return (
+                <span
+                  style={{
+                    background: TYPE_COLORS[post.type],
+                    color: TYPE_TEXTS[post.type],
+                    padding: "2px 7px",
+                    borderRadius: 999,
+                    fontSize: 10,
+                    fontWeight: 500,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 3,
+                  }}
+                >
+                  <TypeIcon style={{ width: 11, height: 11 }} />
+                  {typeLabel}
+                </span>
+              );
+            })()}
           </div>
         </div>
 
@@ -186,9 +219,12 @@ export function SocietyPostCard({
                   padding: "4px 10px",
                   fontSize: 11,
                   cursor: "pointer",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
                 }}
               >
-                ✏️ Edit
+                <FiEdit2 style={{ width: 12, height: 12 }} /> Edit
               </button>
             )}
             <button
@@ -205,9 +241,12 @@ export function SocietyPostCard({
                 padding: "4px 10px",
                 fontSize: 11,
                 cursor: deleting ? "not-allowed" : "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              {deleting ? "…" : "🗑"}
+              {deleting ? "…" : <FiTrash2 style={{ width: 12, height: 12 }} />}
             </button>
           </div>
         )}
@@ -368,7 +407,7 @@ export function SocietyPostCard({
                   overflowWrap: "anywhere",
                 }}
               >
-                📎 {att.fileName}
+                <FiPaperclip style={{ width: 12, height: 12, flexShrink: 0 }} /> {att.fileName}
               </a>
             );
           })}
@@ -399,7 +438,12 @@ export function SocietyPostCard({
             transition: "all .15s",
           }}
         >
-          <span aria-hidden="true">{isLiked ? "♥" : "♡"}</span> {likeCount}
+          {isLiked ? (
+            <FaHeart style={{ width: 13, height: 13, color: "#ef4444" }} />
+          ) : (
+            <FiHeart style={{ width: 13, height: 13 }} />
+          )}{" "}
+          {likeCount}
         </button>
         <button
           type="button"
@@ -421,7 +465,7 @@ export function SocietyPostCard({
             transition: "all .15s",
           }}
         >
-          <span aria-hidden="true">💬</span> {commentCount}
+          <FiMessageCircle style={{ width: 13, height: 13 }} /> {commentCount}
         </button>
       </div>
 

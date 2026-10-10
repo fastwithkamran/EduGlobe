@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { HiOutlineBuildingLibrary } from "react-icons/hi2";
+import { FiPlus } from "react-icons/fi";
 
 export function NoSocietyState({
   missingSociety = false,
@@ -14,8 +16,21 @@ export function NoSocietyState({
         margin: "0 auto",
       }}
     >
-      <div aria-hidden="true" style={{ fontSize: 40, marginBottom: 16 }}>
-        🏛️
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: "rgba(16,185,129,0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--primary-400)",
+          }}
+        >
+          <HiOutlineBuildingLibrary style={{ width: 28, height: 28 }} />
+        </div>
       </div>
       <h1
         style={{
@@ -45,8 +60,8 @@ export function NoSocietyState({
           Return to feed
         </Link>
       ) : (
-        <Link href="/create-society" className="btn btn-primary">
-          + Create a society
+        <Link href="/create-society" className="btn btn-primary inline-flex items-center gap-1.5">
+          <FiPlus className="w-4 h-4" /> Create a society
         </Link>
       )}
     </div>

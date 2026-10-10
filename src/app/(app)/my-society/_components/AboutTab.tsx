@@ -5,18 +5,26 @@ import type { CSSProperties } from "react";
 import { sanitizeImageUrl } from "@/lib/utils";
 import { displayUrl, normalizeHttpUrl } from "@/lib/url";
 import type { CommunityLinks, Society } from "@/types";
+import {
+  FaDiscord,
+  FaWhatsapp,
+  FaLinkedinIn,
+  FaXTwitter,
+  FaInstagram,
+} from "react-icons/fa6";
+import { FiExternalLink } from "react-icons/fi";
 
 const COMMUNITY_LINK_CONFIG: {
   key: keyof CommunityLinks;
-  icon: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   label: string;
   color: string;
 }[] = [
-  { key: "discord", icon: "🎮", label: "Discord", color: "#5865F2" },
-  { key: "whatsapp", icon: "💬", label: "WhatsApp", color: "#25D366" },
-  { key: "linkedin", icon: "💼", label: "LinkedIn", color: "#0A66C2" },
-  { key: "twitter", icon: "🐦", label: "Twitter/X", color: "#1DA1F2" },
-  { key: "instagram", icon: "📸", label: "Instagram", color: "#E1306C" },
+  { key: "discord", icon: FaDiscord, label: "Discord", color: "#5865F2" },
+  { key: "whatsapp", icon: FaWhatsapp, label: "WhatsApp", color: "#25D366" },
+  { key: "linkedin", icon: FaLinkedinIn, label: "LinkedIn", color: "#0A66C2" },
+  { key: "twitter", icon: FaXTwitter, label: "Twitter/X", color: "#1DA1F2" },
+  { key: "instagram", icon: FaInstagram, label: "Instagram", color: "#E1306C" },
 ];
 
 const cardStyle: CSSProperties = {
@@ -214,7 +222,7 @@ export function AboutTab({ society }: { society: Society }) {
             Community links
           </h2>
           <div className="flex flex-col gap-2.5">
-            {activeLinks.map(({ key, icon, label, color, url }) => (
+            {activeLinks.map(({ key, icon: LinkIcon, label, color, url }) => (
               <a
                 key={key}
                 href={url}
@@ -227,8 +235,19 @@ export function AboutTab({ society }: { society: Society }) {
                   textDecoration: "none",
                 }}
               >
-                <span aria-hidden="true" style={{ fontSize: 20 }}>
-                  {icon}
+                <span
+                  aria-hidden="true"
+                  style={{
+                    fontSize: 18,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    width: 24,
+                    height: 24,
+                    color,
+                  }}
+                >
+                  <LinkIcon style={{ width: 18, height: 18 }} />
                 </span>
                 <span className="min-w-0 flex-1">
                   <span
@@ -246,10 +265,10 @@ export function AboutTab({ society }: { society: Society }) {
                 </span>
                 <span
                   aria-hidden="true"
-                  className="text-[11px]"
+                  className="text-[11px] flex items-center"
                   style={{ color: "var(--text-muted)" }}
                 >
-                  →
+                  <FiExternalLink style={{ width: 13, height: 13 }} />
                 </span>
               </a>
             ))}

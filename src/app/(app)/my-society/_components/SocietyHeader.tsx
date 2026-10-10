@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { sanitizeImageUrl } from "@/lib/utils";
 import type { Society } from "@/types";
+import { FiMapPin } from "react-icons/fi";
+import { HiOutlineBuildingLibrary, HiCheckBadge } from "react-icons/hi2";
 
 export function SocietyHeader({ society }: { society: Society }) {
   // FIX: "📍 , " was rendered when city/country were missing.
@@ -77,7 +79,7 @@ export function SocietyHeader({ society }: { society: Society }) {
               style={{ objectFit: "cover" }}
             />
           ) : (
-            <span aria-hidden="true">🌐</span>
+            <HiOutlineBuildingLibrary className="w-8 h-8 text-white" />
           )}
         </div>
 
@@ -106,9 +108,12 @@ export function SocietyHeader({ society }: { society: Society }) {
                   fontSize: 10,
                   fontWeight: 700,
                   whiteSpace: "nowrap",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 3,
                 }}
               >
-                ✓ Verified
+                <HiCheckBadge className="w-3 h-3 text-emerald-400" /> Verified
               </span>
             )}
           </div>
@@ -122,7 +127,11 @@ export function SocietyHeader({ society }: { society: Society }) {
             }}
           >
             {society.organization && <span>{society.organization}</span>}
-            {location && <span>📍 {location}</span>}
+            {location && (
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                <FiMapPin className="w-3.5 h-3.5 opacity-80" /> {location}
+              </span>
+            )}
           </div>
         </div>
       </div>

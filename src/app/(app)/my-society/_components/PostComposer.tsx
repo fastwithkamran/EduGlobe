@@ -21,6 +21,25 @@ import {
   normalizeOpportunityMeta,
 } from "@/components/OpportunityMetaFields";
 import { AttachmentPreview } from "./AttachmentPreview";
+import {
+  FiPaperclip,
+  FiSend,
+  FiCalendar,
+  FiCode,
+  FiBriefcase,
+} from "react-icons/fi";
+import { HiOutlineAcademicCap, HiOutlineMegaphone } from "react-icons/hi2";
+
+const TYPE_ICONS: Record<
+  PostType,
+  React.ComponentType<{ className?: string; style?: React.CSSProperties }>
+> = {
+  announcement: HiOutlineMegaphone,
+  event: FiCalendar,
+  hackathon: FiCode,
+  scholarship: HiOutlineAcademicCap,
+  internship: FiBriefcase,
+};
 
 const MAX_CHARS = 500;
 const MAX_POST_IMAGES = 2;
@@ -229,40 +248,47 @@ export function PostComposer({
           Post type
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {POST_TYPE_OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              type="button"
-              aria-pressed={type === o.value}
-              disabled={uploading}
-              onClick={() => {
-                if (type === o.value) return; // FIX: re-clicking wiped the details
-                setType(o.value);
-                setMeta({});
-              }}
-              style={{
-                padding: "4px 10px",
-                borderRadius: 999,
-                fontSize: 12,
-                cursor: uploading ? "not-allowed" : "pointer",
-                border: "1px solid",
-                borderColor:
-                  type === o.value
-                    ? TYPE_TEXTS[o.value]
-                    : "var(--border-primary)",
-                background:
-                  type === o.value ? TYPE_COLORS[o.value] : "transparent",
-                color:
-                  type === o.value
-                    ? TYPE_TEXTS[o.value]
-                    : "var(--text-tertiary)",
-                fontWeight: type === o.value ? 600 : 400,
-                transition: "all .15s",
-              }}
-            >
-              {o.label}
-            </button>
-          ))}
+          {POST_TYPE_OPTIONS.map((o) => {
+            const Icon = TYPE_ICONS[o.value];
+            return (
+              <button
+                key={o.value}
+                type="button"
+                aria-pressed={type === o.value}
+                disabled={uploading}
+                onClick={() => {
+                  if (type === o.value) return; // FIX: re-clicking wiped the details
+                  setType(o.value);
+                  setMeta({});
+                }}
+                style={{
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  fontSize: 12,
+                  cursor: uploading ? "not-allowed" : "pointer",
+                  border: "1px solid",
+                  borderColor:
+                    type === o.value
+                      ? TYPE_TEXTS[o.value]
+                      : "var(--border-primary)",
+                  background:
+                    type === o.value ? TYPE_COLORS[o.value] : "transparent",
+                  color:
+                    type === o.value
+                      ? TYPE_TEXTS[o.value]
+                      : "var(--text-tertiary)",
+                  fontWeight: type === o.value ? 600 : 400,
+                  transition: "all .15s",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 4,
+                }}
+              >
+                <Icon style={{ width: 12, height: 12 }} />
+                {o.label}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -308,9 +334,12 @@ export function PostComposer({
             fontSize: 12,
             color: "var(--text-tertiary)",
             cursor: uploading ? "not-allowed" : "pointer",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
           }}
         >
-          📎 Attach file or image
+          <FiPaperclip style={{ width: 13, height: 13 }} /> Attach file or image
         </button>
         <input
           ref={fileRef}
@@ -331,9 +360,20 @@ export function PostComposer({
           type="button"
           onClick={publish}
           disabled={uploading || !trimmedLength || trimmedLength > MAX_CHARS}
-          style={{ marginLeft: "auto" }}
+          style={{
+            marginLeft: "auto",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
         >
-          {uploading ? `Publishing ${Math.round(progress)}%` : "📤 Publish"}
+          {uploading ? (
+            `Publishing ${Math.round(progress)}%`
+          ) : (
+            <>
+              <FiSend style={{ width: 13, height: 13 }} /> Publish
+            </>
+          )}
         </button>
       </div>
 
