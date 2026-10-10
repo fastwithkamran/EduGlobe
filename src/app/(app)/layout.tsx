@@ -209,7 +209,7 @@ export default function AdminLayout({
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Image
-            src="/logo.png"
+            src="/logo_bg.png"
             alt="Opportune"
             width={32}
             height={32}
@@ -309,7 +309,7 @@ export default function AdminLayout({
           }}
         >
           <Image
-            src="/logo.png"
+            src="/logo_bg.png"
             alt="Opportune"
             width={32}
             height={32}
