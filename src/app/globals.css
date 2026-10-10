@@ -61,6 +61,11 @@
   --text-accent: #10b981;
   --text-gold: #fbbf24;
 
+  /* Status colours that are safe to use as TEXT (flipped in the light theme) */
+  --danger-text: #f87171;
+  --warning-text: #fb923c;
+  --success-text: #34d399;
+
   /* Skeleton shimmer highlight (flipped in light theme) */
   --skeleton-highlight: rgba(255, 255, 255, 0.05);
 
@@ -84,11 +89,12 @@
     0 0 20px rgba(251, 191, 36, 0.15), 0 0 60px rgba(251, 191, 36, 0.05);
 
   /* Gradients */
+  /* Starts at emerald-600: white button/avatar text on #10b981 was ~2.5:1 (fails AA) */
   --gradient-primary: linear-gradient(
     135deg,
-    #10b981 0%,
-    #059669 50%,
-    #047857 100%
+    #059669 0%,
+    #047857 55%,
+    #065f46 100%
   );
   --gradient-gold: linear-gradient(
     135deg,
@@ -206,6 +212,10 @@
   --blue-400: #2563eb;
   --text-accent: #047857;
   --text-gold: #b45309;
+
+  --danger-text: #b91c1c;
+  --warning-text: #c2410c;
+  --success-text: #047857;
 
   --skeleton-highlight: rgba(255, 255, 255, 0.7);
 
@@ -489,6 +499,46 @@
   .btn-danger:hover {
     transform: translateY(-1px);
     box-shadow: 0 0 24px rgba(239, 68, 68, 0.3);
+  }
+
+  .btn-danger-outline {
+    background: transparent;
+    color: var(--danger-text);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .btn-danger-outline:hover {
+    background: rgba(239, 68, 68, 0.1);
+  }
+
+  /* Ghost action buttons (like / comment / share) aren't `.btn`, so they had
+     no disabled styling at all. */
+  .btn-ghost:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  /* Round icon-only danger button. Hover lives in CSS (not JS mouseenter) so it
+     never sticks after a tap on touch screens. */
+  .icon-danger-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    color: var(--danger-text);
+    cursor: pointer;
+    transition:
+      background var(--transition-fast),
+      transform var(--transition-fast);
+  }
+
+  .icon-danger-btn:hover {
+    background: rgba(239, 68, 68, 0.22);
+    transform: scale(1.08);
   }
 
   /* Disabled buttons must look and behave disabled (no lift, no glow).
@@ -963,6 +1013,7 @@
     .btn-primary:hover,
     .btn-gold:hover,
     .btn-danger:hover,
+    .icon-danger-btn:hover,
     .card:hover {
       transform: none;
     }

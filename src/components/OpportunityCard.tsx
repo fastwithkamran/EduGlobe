@@ -16,16 +16,48 @@ import {
 } from "@/lib/postHelpers";
 import type { OpportunityMeta, PostType } from "@/types";
 
+// Colours come from theme tokens (see globals.css) for sharp contrast on light & dark themes.
 function getDeadlinePresentation(deadline?: string) {
   const days = daysUntil(deadline);
   if (days === null) {
-    return { color: "var(--text-muted)", label: "Deadline" };
+    return { color: "var(--text-muted, #475569)", label: "Deadline", closed: false };
   }
-  if (days < 0) return { color: "#9ca3af", label: "Deadline passed" };
-  if (days === 0) return { color: "#ef4444", label: "Deadline today" };
-  if (days <= 3) return { color: "#ef4444", label: `${days}d left` };
-  if (days <= 7) return { color: "#f97316", label: `${days}d left` };
-  return { color: "#10b981", label: `${days}d left` };
+  if (days < 0) {
+    return { color: "var(--text-muted, #475569)", label: "Deadline passed", closed: true };
+  }
+  if (days === 0) {
+    return { color: "var(--danger-text, #b91c1c)", label: "Deadline today", closed: false };
+  }
+  if (days <= 3) {
+    return { color: "var(--danger-text, #b91c1c)", label: `${days}d left`, closed: false };
+  }
+  if (days <= 7) {
+    return { color: "var(--warning-text, #c2410c)", label: `${days}d left`, closed: false };
+  }
+  return { color: "var(--success-text, #047857)", label: `${days}d left`, closed: false };
+}
+
+/**
+ * Older documents may store skills as a comma-separated string, which used to
+ * crash the whole feed (`.map is not a function`). Also de-dupes case-insensitively.
+ */
+function normalizeSkills(raw: unknown): string[] {
+  const list = Array.isArray(raw)
+    ? raw
+    : typeof raw === "string"
+      ? raw.split(",")
+      : [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of list) {
+    if (typeof item !== "string") continue;
+    const skill = item.trim();
+    const key = skill.toLowerCase();
+    if (!skill || seen.has(key)) continue;
+    seen.add(key);
+    out.push(skill);
+  }
+  return out;
 }
 
 function MetadataItem({
@@ -40,16 +72,18 @@ function MetadataItem({
   color?: string;
 }) {
   return (
-    <div className="flex min-w-0 max-w-full items-center gap-1.5">
-      <span aria-hidden="true" className="shrink-0 text-[13px] flex items-center">
+    // The colour is set on the wrapper so the icon matches its text
+    // Defaults to var(--text-primary) for dark, high-contrast readability on pastel cards.
+    <div
+      className="flex min-w-0 max-w-full items-center gap-1.5"
+      style={{ color: color ?? "var(--text-primary, #0f172a)" }}
+    >
+      <span aria-hidden="true" className="shrink-0 text-[13px] flex items-center opacity-85">
         {icon}
       </span>
       <span
         className="min-w-0 break-words text-xs leading-normal"
-        style={{
-          color: color ?? "var(--text-secondary)",
-          fontWeight: emphasized ? 700 : 400,
-        }}
+        style={{ fontWeight: emphasized ? 700 : 500 }}
       >
         {children}
       </span>
@@ -68,13 +102,20 @@ export function OpportunityCard({
   const deadlinePresentation = getDeadlinePresentation(meta.deadline);
   const startDate = formatOpportunityDate(meta.startDate);
   const endDate = formatOpportunityDate(meta.endDate);
+  const sameDay = !!startDate && startDate === endDate;
   const applyLink = safeExternalUrl(meta.applyLink);
-  const actionLabel =
-    type === "event" || type === "hackathon" ? "Register" : "Apply Now";
-  const skills = [
-    ...new Set(meta.skills?.map((skill) => skill.trim()).filter(Boolean)),
-  ];
+  const skills = normalizeSkills(meta.skills);
   const color = TYPE_TEXTS[type];
+  const showCountry =
+    !!meta.country &&
+    meta.country.trim().toLowerCase() !== (meta.location ?? "").trim().toLowerCase();
+
+  // Once the deadline has passed, don't keep shouting "Apply now".
+  const actionLabel = deadlinePresentation.closed
+    ? "View details"
+    : type === "event" || type === "hackathon"
+      ? "Register"
+      : "Apply now";
 
   return (
     <section
@@ -97,7 +138,7 @@ export function OpportunityCard({
         )}
         {(startDate || endDate) && (
           <MetadataItem icon={<FiCalendar className="w-3.5 h-3.5" />}>
-            {startDate && endDate
+            {startDate && endDate && !sameDay
               ? `${startDate} – ${endDate}`
               : (startDate ?? endDate)}
           </MetadataItem>
@@ -106,7 +147,7 @@ export function OpportunityCard({
           <MetadataItem
             icon={<FiAward className="w-3.5 h-3.5" />}
             emphasized
-            color="#fbbf24"
+            color="var(--text-gold, #b45309)"
           >
             {meta.prize}
           </MetadataItem>
@@ -115,7 +156,7 @@ export function OpportunityCard({
           <MetadataItem
             icon={<HiOutlineAcademicCap className="w-3.5 h-3.5" />}
             emphasized
-            color="#fbbf24"
+            color="var(--text-gold, #b45309)"
           >
             {meta.funding}
           </MetadataItem>
@@ -125,7 +166,7 @@ export function OpportunityCard({
             {meta.location}
           </MetadataItem>
         )}
-        {meta.country && meta.country !== meta.location && (
+        {showCountry && (
           <MetadataItem icon={<FiGlobe className="w-3.5 h-3.5" />}>
             {meta.country}
           </MetadataItem>
@@ -142,9 +183,9 @@ export function OpportunityCard({
           className="m-0 flex list-none flex-wrap gap-2 p-0"
           aria-label={type === "event" ? "Topics" : "Skills and topics"}
         >
-          {skills.map((skill, index) => (
+          {skills.map((skill) => (
             <li
-              key={`${skill}-${index}`}
+              key={skill.toLowerCase()}
               className="rounded-full px-3 py-1 text-[11px] sm:text-xs font-medium leading-normal break-words"
               style={{
                 background: `${color}18`,
@@ -166,14 +207,17 @@ export function OpportunityCard({
       )}
 
       {applyLink && (
+        // Uses the design-system button: the old inline `white text on
+        // TYPE_TEXTS[type]` was unreadable whenever that colour was a light pastel.
         <a
           href={applyLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-1 inline-flex min-h-9 self-start items-center gap-1.5 rounded-xl px-4 py-2 text-[13px] font-bold shadow-sm transition-opacity hover:opacity-90"
-          style={{ background: color, color: "#ffffff" }}
+          className={`btn btn-sm self-start ${
+            deadlinePresentation.closed ? "btn-outline" : "btn-primary"
+          }`}
         >
-          <FiExternalLink className="w-4 h-4" /> {actionLabel}
+          <FiExternalLink className="w-4 h-4" aria-hidden="true" /> {actionLabel}
         </a>
       )}
     </section>

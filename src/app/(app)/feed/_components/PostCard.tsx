@@ -1,309 +1,46 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import toast from "react-hot-toast";
-import {
-  togglePostLike,
-  followSociety,
-  unfollowSociety,
-  deletePost,
-} from "@/lib/firestore";
-import {
-  timeAgo,
-  TYPE_COLORS,
-  TYPE_TEXTS,
-  getInitials,
-} from "@/lib/postHelpers";
+import { followSociety, unfollowSociety, deletePost } from "@/lib/firestore";
+import { timeAgo, getInitials, OPPORTUNITY_TYPES } from "@/lib/postHelpers";
 import { sanitizeImageUrl } from "@/lib/utils";
+import { useOptimisticLike } from "@/lib/useOptimisticLike";
 import { OpportunityCard } from "@/components/OpportunityCard";
 import { CommentThread } from "@/components/CommentThread";
+import {
+  AttachmentList,
+  ConfirmDeleteModal,
+  PostTypeBadge,
+  hasOpportunityMeta,
+  plural,
+  truncateChars,
+} from "@/components/PostCardParts";
 import { SocietyAboutDialog } from "./SocietyAboutDialog";
-import type { Post, PostType } from "@/types";
+import type { Post } from "@/types";
 import {
   FiTrash2,
-  FiImage,
-  FiPaperclip,
   FiHeart,
   FiMessageCircle,
   FiShare2,
   FiCheck,
   FiPlus,
-  FiCalendar,
-  FiCode,
-  FiBriefcase,
-  FiFileText,
 } from "react-icons/fi";
 import { FaHeart } from "react-icons/fa";
-import { HiOutlineAcademicCap, HiOutlineMegaphone } from "react-icons/hi2";
 
-const TYPE_ICONS: Record<
-  PostType,
-  React.ComponentType<{ className?: string; style?: React.CSSProperties }>
-> = {
-  announcement: HiOutlineMegaphone,
-  event: FiCalendar,
-  hackathon: FiCode,
-  scholarship: HiOutlineAcademicCap,
-  internship: FiBriefcase,
-};
-
-// ─── Confirm Delete Modal ──────────────────────────────────────────────────────
-
-function ConfirmDeleteModal({
-  message,
-  onConfirm,
-  onCancel,
-  loading,
-}: {
-  message: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-  loading?: boolean;
-}) {
-  const cancelRef = useRef<HTMLButtonElement>(null);
-
-  // Focus the safe option when the modal opens, restore focus on close
-  useEffect(() => {
-    const previouslyFocused = document.activeElement;
-    cancelRef.current?.focus();
-    return () => {
-      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
-    };
-  }, []);
-
-  // Escape closes (unless a delete is in flight)
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !loading) onCancel();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [loading, onCancel]);
-
-  return createPortal(
-    <div
-      onClick={() => {
-        // FIX: backdrop click used to dismiss the modal mid-delete
-        if (!loading) onCancel();
-      }}
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.7)",
-        backdropFilter: "blur(4px)",
-        zIndex: 9999,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="delete-post-title"
-        aria-describedby="delete-post-desc"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid rgba(239,68,68,0.25)",
-          borderRadius: 16,
-          padding: "28px 24px",
-          width: 400,
-          maxWidth: "90vw",
-        }}
-      >
-        <div
-          aria-hidden="true"
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: "50%",
-            background: "rgba(239,68,68,0.1)",
-            border: "2px solid rgba(239,68,68,0.3)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            margin: "0 auto 16px",
-          }}
-        >
-          <FiTrash2 style={{ width: 24, height: 24, color: "#ef4444" }} />
-        </div>
-        <h2
-          id="delete-post-title"
-          style={{
-            fontSize: "var(--text-xl)",
-            fontFamily: "var(--font-heading)",
-            fontWeight: 800,
-            textAlign: "center",
-            marginBottom: 8,
-          }}
-        >
-          Delete Post?
-        </h2>
-        <p
-          id="delete-post-desc"
-          style={{
-            fontSize: 13,
-            color: "var(--text-secondary)",
-            textAlign: "center",
-            lineHeight: 1.6,
-            marginBottom: 24,
-          }}
-        >
-          {message}
-          <br />
-          <strong style={{ color: "#ef4444" }}>
-            This action cannot be undone.
-          </strong>
-        </p>
-        <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-          <button
-            type="button"
-            ref={cancelRef}
-            className="btn btn-outline"
-            onClick={onCancel}
-            disabled={loading}
-            style={{ minWidth: 90 }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={loading}
-            onClick={onConfirm}
-            style={{
-              minWidth: 120,
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 6,
-              padding: "9px 18px",
-              background: loading
-                ? "rgba(239,68,68,0.4)"
-                : "linear-gradient(135deg,#ef4444,#dc2626)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "var(--radius-lg)",
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: loading ? "not-allowed" : "pointer",
-              fontFamily: "var(--font-body)",
-            }}
-          >
-            {loading ? (
-              "Deleting…"
-            ) : (
-              <>
-                <FiTrash2 style={{ width: 14, height: 14 }} /> Delete
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>,
-    document.body,
-  );
-}
-
-// ─── Image with skeleton shimmer ──────────────────────────────────────────────
-
-function ImageWithSkeleton({ src, alt }: { src: string; alt: string }) {
-  const [loaded, setLoaded] = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  // FIX: a broken image used to pulse forever with an invisible <img>
-  if (failed) {
-    return (
-      <a
-        href={src}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 8,
-          padding: "7px 12px",
-          background: "var(--bg-tertiary)",
-          border: "1px solid var(--border-primary)",
-          borderRadius: 8,
-          color: "var(--text-secondary)",
-          fontSize: 12,
-        }}
-      >
-        <FiImage style={{ width: 14, height: 14 }} /> {alt || "Image"} (couldn’t load preview)
-      </a>
-    );
-  }
-
-  return (
-    <a
-      href={src}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        borderRadius: 8,
-        overflow: "hidden",
-        display: "block",
-        maxWidth: "100%",
-        width: 280,
-        border: "1px solid var(--border-primary)",
-        position: "relative",
-        minHeight: 80,
-      }}
-    >
-      {!loaded && (
-        <div
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "var(--bg-tertiary)",
-            animation: "pulse 1.5s ease-in-out infinite",
-          }}
-        />
-      )}
-      {/* `unoptimized`: attachment hosts are user-supplied, so they can't all
-          be whitelisted in next.config `images.remotePatterns`. Without this,
-          next/image throws for any host that isn't configured. */}
-      <Image
-        src={src}
-        alt={alt}
-        width={0}
-        height={0}
-        sizes="(max-width: 480px) 100vw, 280px"
-        unoptimized
-        onLoad={() => setLoaded(true)}
-        onError={() => setFailed(true)}
-        style={{
-          width: "100%",
-          height: "auto",
-          display: "block",
-          opacity: loaded ? 1 : 0,
-          transition: "opacity .3s",
-        }}
-      />
-    </a>
-  );
-}
-
-// ─── Shared style for the ghost action buttons ────────────────────────────────
-
+// Shared style for the ghost action buttons.
+// NOTE: no inline `background`, otherwise .btn-ghost:hover can never apply.
 const actionButtonStyle: React.CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 5,
   fontSize: 13,
-  border: "none",
   cursor: "pointer",
   padding: "8px 14px",
   borderRadius: "var(--radius-md)",
   transition: "all .15s",
-  // NOTE: no inline `background` here, otherwise .btn-ghost:hover can never apply
 };
-
-// ─── Post Card ────────────────────────────────────────────────────────────────
 
 export function PostCard({
   post,
@@ -323,67 +60,35 @@ export function PostCard({
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [followPending, setFollowPending] = useState(false);
-  const [likePending, setLikePending] = useState(false);
   const [logoFailed, setLogoFailed] = useState(false);
 
-  // Defensive defaults — older Firestore docs may be missing these fields
+  // Defensive defaults: older Firestore docs may be missing these fields
   const attachments = post.attachments ?? [];
-  const likedBy = post.likedBy ?? [];
-  const serverCount = post.likeCount ?? 0;
-  const commentCount = post.commentCount ?? 0;
+  const content = post.content ?? "";
+  const commentCount = Math.max(post.commentCount ?? 0, 0);
 
-  const serverLiked = currentUserId ? likedBy.includes(currentUserId) : false;
+  const {
+    liked: isLiked,
+    count: likeCount,
+    toggle: handleLike,
+  } = useOptimisticLike(post, currentUserId);
 
-  // Optimistic like — null means "use the server value"
-  const [localLiked, setLocalLiked] = useState<boolean | null>(null);
-  const [localCount, setLocalCount] = useState<number | null>(null);
-
-  // FIX: previously the optimistic override was cleared as soon as the write
-  // resolved, which flashed the OLD like state until the snapshot listener
-  // caught up (and permanently showed the old state if the parent held a stale
-  // post object). Now the override is cleared only when the server value for
-  // this post actually changes.
-  const [syncedServer, setSyncedServer] = useState({
-    liked: serverLiked,
-    count: serverCount,
-  });
-  if (syncedServer.liked !== serverLiked || syncedServer.count !== serverCount) {
-    setSyncedServer({ liked: serverLiked, count: serverCount });
-    setLocalLiked(null);
-    setLocalCount(null);
-  }
-
-  const isLiked = localLiked !== null ? localLiked : serverLiked;
-  const likeCount = localCount !== null ? localCount : serverCount;
   const isFollowing = followedIds.has(post.societyId);
-
-  const handleLike = async () => {
-    if (!currentUserId) {
-      toast.error("Sign in to like posts");
-      return;
-    }
-    if (likePending) return; // FIX: rapid double-clicks could desync count
-    setLikePending(true);
-    const wasLiked = isLiked;
-    setLocalLiked(!wasLiked);
-    setLocalCount(Math.max(0, likeCount + (wasLiked ? -1 : 1)));
-    try {
-      await togglePostLike(post.id, currentUserId, !wasLiked);
-    } catch {
-      setLocalLiked(null); // revert to server truth
-      setLocalCount(null);
-      toast.error("Failed to like post");
-    } finally {
-      setLikePending(false);
-    }
-  };
+  const logoSrc = post.societyLogoURL
+    ? sanitizeImageUrl(post.societyLogoURL)
+    : "";
+  const isOpportunity = OPPORTUNITY_TYPES.includes(post.type);
+  const isEdited =
+    post.updatedAt instanceof Date &&
+    post.createdAt instanceof Date &&
+    post.updatedAt.getTime() > post.createdAt.getTime() + 5_000;
 
   const handleFollow = async () => {
     if (!currentUserId) {
       toast.error("Sign in to follow societies");
       return;
     }
-    if (followPending) return; // FIX: double-click used to follow then unfollow
+    if (followPending) return; // double-click used to follow then unfollow
     setFollowPending(true);
     try {
       if (isFollowing) {
@@ -393,37 +98,36 @@ export function PostCard({
       } else {
         await followSociety(currentUserId, post.societyId);
         onFollowToggle(post.societyId, true);
-        toast.success(`Following ${post.societyName}!`);
+        toast.success(`Following ${post.societyName}`);
       }
-    } catch {
-      toast.error("Failed to update follow");
+    } catch (error) {
+      console.error("[PostCard] Follow failed:", error);
+      toast.error("Couldn’t update follow. Try again.");
     } finally {
       setFollowPending(false);
     }
   };
 
   const handleShare = async () => {
-    // FIX: used to share window.location.href (just the feed page). Link to
-    // this specific card via its anchor instead.
     const url = `${window.location.origin}${window.location.pathname}#post-${post.id}`;
-    const snippet = post.content.slice(0, 100);
-    const text = `${post.societyName}: ${snippet}${post.content.length > 100 ? "…" : ""}`;
+    // FIX: slice(0, 100) could cut an emoji in half and share a broken character.
+    const text = `${post.societyName}: ${truncateChars(content, 100)}`;
 
     if (navigator.share) {
       try {
         await navigator.share({ title: post.societyName, text, url });
         return;
       } catch (error) {
-        // User dismissed the share sheet — nothing to do
+        // User dismissed the share sheet: nothing to do
         if (error instanceof DOMException && error.name === "AbortError") return;
         // Any other failure: fall through to clipboard
       }
     }
     try {
       await navigator.clipboard.writeText(url);
-      toast.success("Link copied!");
+      toast.success("Link copied");
     } catch {
-      toast.error("Could not copy link");
+      toast.error("Couldn’t copy the link");
     }
   };
 
@@ -433,14 +137,13 @@ export function PostCard({
       await deletePost(post.id);
       toast.success("Post deleted");
       setConfirmDelete(false);
-    } catch {
-      toast.error("Failed to delete post");
+    } catch (error) {
+      console.error("[PostCard] Delete failed:", error);
+      toast.error("Couldn’t delete the post. Try again.");
     } finally {
       setDeleting(false);
     }
   };
-
-  const typeLabel = post.type.charAt(0).toUpperCase() + post.type.slice(1);
 
   return (
     <>
@@ -453,43 +156,18 @@ export function PostCard({
           padding: 20,
           marginBottom: 14,
           position: "relative",
-          transition: "border-color .2s",
           scrollMarginTop: 16,
         }}
       >
-        {/* Super-admin delete button */}
+        {/* Super-admin delete button (hover styles live in CSS so they don't stick on touch) */}
         {isSuperAdmin && (
           <button
             type="button"
+            className="icon-danger-btn"
             onClick={() => setConfirmDelete(true)}
-            title="Super Admin: Delete post"
+            title="Super admin: delete post"
             aria-label={`Delete post by ${post.societyName}`}
-            style={{
-              position: "absolute",
-              top: 12,
-              right: 12,
-              width: 30,
-              height: 30,
-              borderRadius: "50%",
-              background: "rgba(239,68,68,0.1)",
-              border: "1px solid rgba(239,68,68,0.25)",
-              color: "#ef4444",
-              fontSize: 13,
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              transition: "all .15s",
-              zIndex: 1,
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = "rgba(239,68,68,0.22)";
-              e.currentTarget.style.transform = "scale(1.1)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = "rgba(239,68,68,0.1)";
-              e.currentTarget.style.transform = "scale(1)";
-            }}
+            style={{ position: "absolute", top: 12, right: 12, zIndex: 1 }}
           >
             <FiTrash2 style={{ width: 14, height: 14 }} />
           </button>
@@ -503,7 +181,7 @@ export function PostCard({
             justifyContent: "space-between",
             gap: 10,
             marginBottom: 12,
-            paddingRight: isSuperAdmin ? 44 : 0,
+            paddingRight: isSuperAdmin ? 48 : 0,
           }}
         >
           {/* minWidth:0 lets long society names truncate instead of pushing
@@ -540,9 +218,10 @@ export function PostCard({
                 cursor: "pointer",
               }}
             >
-              {post.societyLogoURL && !logoFailed ? (
+              {/* FIX: an empty sanitized URL used to reach next/image, which throws */}
+              {logoSrc && !logoFailed ? (
                 <Image
-                  src={sanitizeImageUrl(post.societyLogoURL)}
+                  src={logoSrc}
                   alt=""
                   width={40}
                   height={40}
@@ -579,26 +258,8 @@ export function PostCard({
                 }}
               >
                 <span>{timeAgo(post.createdAt)}</span>
-                {(() => {
-                  const TypeIcon = TYPE_ICONS[post.type] ?? FiFileText;
-                  return (
-                    <span
-                      style={{
-                        background: TYPE_COLORS[post.type],
-                        color: TYPE_TEXTS[post.type],
-                        padding: "2px 8px",
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 500,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                      }}
-                    >
-                      <TypeIcon style={{ width: 12, height: 12 }} /> {typeLabel}
-                    </span>
-                  );
-                })()}
+                {isEdited && <span style={{ opacity: 0.8 }}>(edited)</span>}
+                <PostTypeBadge type={post.type} />
               </div>
             </div>
           </div>
@@ -616,78 +277,39 @@ export function PostCard({
             style={{ flexShrink: 0 }}
           >
             {isFollowing ? (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <FiCheck style={{ width: 12, height: 12 }} /> Following
-              </span>
+              <>
+                <FiCheck style={{ width: 12, height: 12 }} aria-hidden="true" />{" "}
+                Following
+              </>
             ) : (
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                <FiPlus style={{ width: 12, height: 12 }} /> Follow
-              </span>
+              <>
+                <FiPlus style={{ width: 12, height: 12 }} aria-hidden="true" />{" "}
+                Follow
+              </>
             )}
           </button>
         </div>
 
-        {/* Content */}
+        {/* Content: spacing to what follows comes from the next block's own margin-top */}
         <p
           style={{
             fontSize: 14,
             color: "var(--text-secondary)",
             lineHeight: 1.75,
-            marginBottom: attachments.length > 0 ? 12 : 0,
+            margin: 0,
             whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
+            overflowWrap: "anywhere",
           }}
         >
-          {post.content}
+          {content}
         </p>
 
-        {/* Opportunity metadata */}
-        {post.opportunityMeta &&
-          Object.keys(post.opportunityMeta).length > 0 && (
-            <OpportunityCard meta={post.opportunityMeta} type={post.type} />
-          )}
-
-        {/* Attachments */}
-        {attachments.length > 0 && (
-          <div
-            style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}
-          >
-            {attachments.map((att) =>
-              att.fileType?.startsWith("image/") ? (
-                <ImageWithSkeleton
-                  key={att.id}
-                  src={sanitizeImageUrl(att.fileURL)}
-                  alt={att.fileName}
-                />
-              ) : (
-                <a
-                  key={att.id}
-                  href={sanitizeImageUrl(att.fileURL)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    padding: "7px 12px",
-                    background: "var(--bg-tertiary)",
-                    border: "1px solid var(--border-primary)",
-                    borderRadius: 8,
-                    textDecoration: "none",
-                    color: "var(--text-secondary)",
-                    fontSize: 12,
-                    maxWidth: "100%",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  <FiPaperclip style={{ width: 13, height: 13, flexShrink: 0 }} /> {att.fileName}
-                </a>
-              ),
-            )}
-          </div>
+        {/* Opportunity metadata: only for opportunity types, like SocietyPostCard */}
+        {isOpportunity && hasOpportunityMeta(post.opportunityMeta) && (
+          <OpportunityCard meta={post.opportunityMeta!} type={post.type} />
         )}
+
+        <AttachmentList attachments={attachments} />
 
         {/* Actions: Like · Comment · Share */}
         <div
@@ -704,15 +326,14 @@ export function PostCard({
             onClick={handleLike}
             className="btn-ghost"
             aria-pressed={isLiked}
-            aria-label={`${isLiked ? "Unlike" : "Like"} post, ${likeCount} likes`}
+            aria-label={`${isLiked ? "Unlike" : "Like"} post, ${plural(likeCount, "like")}`}
             style={{
               ...actionButtonStyle,
-              color: isLiked ? "#ef4444" : "var(--text-tertiary)",
-              transform: isLiked ? "scale(1.05)" : "scale(1)",
+              color: isLiked ? "var(--danger-text)" : "var(--text-tertiary)",
             }}
           >
             {isLiked ? (
-              <FaHeart style={{ width: 14, height: 14, color: "#ef4444" }} />
+              <FaHeart style={{ width: 14, height: 14 }} />
             ) : (
               <FiHeart style={{ width: 14, height: 14 }} />
             )}{" "}
@@ -723,7 +344,7 @@ export function PostCard({
             onClick={() => setShowComments((v) => !v)}
             className="btn-ghost"
             aria-expanded={showComments}
-            aria-label={`${showComments ? "Hide" : "Show"} comments, ${commentCount} comments`}
+            aria-label={`${showComments ? "Hide" : "Show"} comments, ${plural(commentCount, "comment")}`}
             style={{
               ...actionButtonStyle,
               color: showComments
@@ -739,7 +360,7 @@ export function PostCard({
             className="btn-ghost"
             style={{ ...actionButtonStyle, color: "var(--text-tertiary)" }}
           >
-            <FiShare2 style={{ width: 14, height: 14 }} /> Share
+            <FiShare2 style={{ width: 14, height: 14 }} aria-hidden="true" /> Share
           </button>
         </div>
 
@@ -748,7 +369,7 @@ export function PostCard({
 
       {confirmDelete && (
         <ConfirmDeleteModal
-          message={`Delete this post by "${post.societyName}"?`}
+          message={`Delete this post by “${post.societyName}”?`}
           onConfirm={handleDeleteConfirmed}
           onCancel={() => setConfirmDelete(false)}
           loading={deleting}
