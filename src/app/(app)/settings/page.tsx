@@ -443,7 +443,7 @@ export default function SettingsPage() {
               )}
             </button>
             <div style={{ fontSize: 12, color: "var(--text-tertiary)" }}>
-              JPG, PNG, or GIF · Maximum 5 MB · Stored on Cloudinary
+              JPG, PNG, or GIF · Maximum 5 MB
             </div>
             <input
               ref={fileInputRef}
